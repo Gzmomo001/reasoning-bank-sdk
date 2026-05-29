@@ -1,0 +1,47 @@
+[project]
+name = "reasoning-bank"
+version = "0.1.0"
+description = "Persistent agent memory SDK with induction, retrieval, and scaling"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "chromadb>=1.0.0",
+    "openai>=1.0.0",
+    "google-genai>=1.0.0",
+    "anthropic>=0.30.0",
+    "pydantic>=2.0.0",
+    "python-dotenv>=1.0.0",
+    "fastapi>=0.115.0",
+    "uvicorn>=0.34.0",
+    "mcp>=1.0.0",
+    "pytest>=9.0.3",
+    "httpx>=0.28.1",
+]
+
+[project.optional-dependencies]
+# WebArena research dependencies (not needed for SDK)
+webarena = [
+    "browsergym-core==0.14.1",
+    "browsergym-experiments==0.14.1",
+    "browsergym-webarena==0.14.1",
+    "browsergym==0.14.1",
+    "langchain>=0.3.26",
+    "langchain-anthropic>=0.3.19",
+    "langchain-community>=0.3.26",
+    "langchain-openai>=1.1.11",
+    "pillow>=11.2.1",
+    "torch>=2.7.0",
+]
+
+[project.scripts]
+reasoning-bank-mcp = "reasoning_bank_mcp.server:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["reasoning_bank", "reasoning_bank_api", "reasoning_bank_mcp"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
