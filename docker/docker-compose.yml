@@ -8,6 +8,8 @@ services:
       - chroma_data:/chroma/chroma
     environment:
       - ANONYMIZED_TELEMETRY=FALSE
+    networks:
+      - reasoning-bank
 
   api:
     build:
@@ -29,6 +31,8 @@ services:
       - LLM_API_KEY=${LLM_API_KEY}
       - LLM_API_BASE_URL=${LLM_API_BASE_URL:-}
       - GOOGLE_GENAI_USE_VERTEXAI=${GOOGLE_GENAI_USE_VERTEXAI:-False}
+    networks:
+      - reasoning-bank
 
   mcp:
     build:
@@ -50,6 +54,12 @@ services:
       - LLM_API_KEY=${LLM_API_KEY}
       - LLM_API_BASE_URL=${LLM_API_BASE_URL:-}
       - GOOGLE_GENAI_USE_VERTEXAI=${GOOGLE_GENAI_USE_VERTEXAI:-False}
+    networks:
+      - reasoning-bank
+
+networks:
+  reasoning-bank:
+    driver: bridge
 
 volumes:
   chroma_data:
