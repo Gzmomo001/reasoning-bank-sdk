@@ -6,7 +6,10 @@ import os
 
 from fastapi import FastAPI
 
+from reasoning_bank.logging_config import setup_logging
 from reasoning_bank_api.routes import router
+
+setup_logging("api")
 
 
 def create_app() -> FastAPI:

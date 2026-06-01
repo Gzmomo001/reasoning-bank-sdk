@@ -14,11 +14,13 @@ dependencies = [
     "fastapi>=0.115.0",
     "uvicorn>=0.34.0",
     "mcp>=1.0.0",
-    "pytest>=9.0.3",
     "httpx>=0.28.1",
 ]
 
 [project.optional-dependencies]
+dev = [
+    "pytest>=9.0.3",
+]
 # WebArena research dependencies (not needed for SDK)
 webarena = [
     "browsergym-core==0.14.1",
@@ -45,3 +47,8 @@ packages = ["reasoning_bank", "reasoning_bank_api", "reasoning_bank_mcp"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+
+[dependency-groups]
+dev = [
+    "pyyaml>=6.0.3",
+]

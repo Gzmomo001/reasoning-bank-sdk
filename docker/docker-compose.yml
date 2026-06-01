@@ -1,13 +1,23 @@
 services:
   chromadb:
     image: chromadb/chroma:latest
-    profiles: ["api", "mcp", "all"]
     ports:
       - "8001:8000"
     volumes:
-      - chroma_data:/chroma/chroma
+      - ./chroma_data:/data
+      - ./config.yaml:/config.yaml
     environment:
       - ANONYMIZED_TELEMETRY=FALSE
+    healthcheck:
+      test: ["CMD-SHELL", "bash -c 'echo > /dev/tcp/localhost/8000'"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
     networks:
       - reasoning-bank
 
@@ -15,11 +25,13 @@ services:
     build:
       context: ..
       dockerfile: docker/Dockerfile.api
-    profiles: ["api", "all"]
     ports:
       - "8000:8000"
     depends_on:
-      - chromadb
+      chromadb:
+        condition: service_healthy
+    volumes:
+      - ./logs/api:/app/logs
     environment:
       - STORAGE=chroma
       - CHROMA_HOST=chromadb
@@ -28,9 +40,16 @@ services:
       - EMBEDDING_PROVIDER=${EMBEDDING_PROVIDER:-gemini}
       - LLM_PROVIDER=${LLM_PROVIDER:-openai}
       - LLM_MODEL=${LLM_MODEL:-gpt-4o}
-      - LLM_API_KEY=${LLM_API_KEY}
+      - LLM_API_KEY=${LLM_API_KEY:-}
       - LLM_API_BASE_URL=${LLM_API_BASE_URL:-}
       - GOOGLE_GENAI_USE_VERTEXAI=${GOOGLE_GENAI_USE_VERTEXAI:-False}
+      - LOG_DIR=/app/logs
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
     networks:
       - reasoning-bank
 
@@ -38,11 +57,13 @@ services:
     build:
       context: ..
       dockerfile: docker/Dockerfile.mcp
-    profiles: ["mcp", "all"]
     ports:
       - "9000:9000"
     depends_on:
-      - chromadb
+      chromadb:
+        condition: service_healthy
+    volumes:
+      - ./logs/mcp:/app/logs
     environment:
       - STORAGE=chroma
       - CHROMA_HOST=chromadb
@@ -51,9 +72,16 @@ services:
       - EMBEDDING_PROVIDER=${EMBEDDING_PROVIDER:-gemini}
       - LLM_PROVIDER=${LLM_PROVIDER:-openai}
       - LLM_MODEL=${LLM_MODEL:-gpt-4o}
-      - LLM_API_KEY=${LLM_API_KEY}
+      - LLM_API_KEY=${LLM_API_KEY:-}
       - LLM_API_BASE_URL=${LLM_API_BASE_URL:-}
       - GOOGLE_GENAI_USE_VERTEXAI=${GOOGLE_GENAI_USE_VERTEXAI:-False}
+      - LOG_DIR=/app/logs
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
     networks:
       - reasoning-bank
 

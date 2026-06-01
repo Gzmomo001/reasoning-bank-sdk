@@ -10,6 +10,7 @@ import os
 from mcp.server.fastmcp import FastMCP
 
 from reasoning_bank import MemoryBank
+from reasoning_bank.logging_config import setup_logging
 from reasoning_bank.llm.anthropic_client import AnthropicClient
 from reasoning_bank.llm.gemini_client import GeminiClient
 from reasoning_bank.llm.openai_client import OpenAIClient
@@ -160,6 +161,8 @@ def main():
     parser.add_argument("--transport", choices=["stdio", "sse"], default="stdio")
     parser.add_argument("--port", type=int, default=9000)
     args = parser.parse_args()
+
+    setup_logging("mcp")
 
     if args.transport == "sse":
         mcp.run(transport="sse", port=args.port)
