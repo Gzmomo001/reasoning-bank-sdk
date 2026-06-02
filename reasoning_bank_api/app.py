@@ -2,12 +2,17 @@
 
 from __future__ import annotations
 
-import os
+from pathlib import Path
 
+from dotenv import load_dotenv
 from fastapi import FastAPI
 
 from reasoning_bank.logging_config import setup_logging
 from reasoning_bank_api.routes import router
+
+# Load .env from project root (walk up to find it)
+_env_path = Path(__file__).resolve().parent.parent / ".env"
+load_dotenv(_env_path)
 
 setup_logging("api")
 

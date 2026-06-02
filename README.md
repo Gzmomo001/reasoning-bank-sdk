@@ -86,7 +86,7 @@ export EMBEDDING_PROVIDER=gemini
 export STORAGE=chroma
 
 # Start the server
-uvicorn reasoning_bank_api.app:app --host 0.0.0.0 --port 8000
+uv run uvicorn reasoning_bank_api.app:app --host 0.0.0.0 --port 8000
 ```
 
 #### `POST /memory/retrieve`

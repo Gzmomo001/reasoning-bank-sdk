@@ -36,9 +36,10 @@ class GeminiEmbedding(EmbeddingProvider):
         from google import genai
         from google.genai.types import HttpOptions
 
-        api_key = os.environ.get("LLM_API_KEY", "")
-        provider = os.environ.get("LLM_PROVIDER", "")
-        if provider == "google_ai" and api_key:
+        api_key = os.environ.get("EMBEDDING_API_KEY", "") or os.environ.get("LLM_API_KEY", "")
+        use_vertexai = os.environ.get("GOOGLE_GENAI_USE_VERTEXAI", "").lower() in ("true", "1", "yes")
+
+        if not use_vertexai and api_key:
             return genai.Client(api_key=api_key, http_options=HttpOptions(api_version="v1"))
         return genai.Client(vertexai=True, http_options=HttpOptions(api_version="v1"))
 
