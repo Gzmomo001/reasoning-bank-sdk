@@ -161,7 +161,7 @@ class MemoryBank:
             return
         texts = [item.to_prompt_text() for item in items]
         embeddings = self._embedding.embed(texts)
-        self._storage.add_batch(items)
+        self._storage.add_batch(items, embeddings=embeddings)
 
         # For JSONL backend, also store embeddings separately
         if isinstance(self._storage, JsonlStorage):

@@ -53,7 +53,7 @@ class GeminiEmbedding(EmbeddingProvider):
                 output_dimensionality=self._dim,
             ),
         )
-        return [item.embedding for item in response.embeddings]
+        return [item.values for item in response.embeddings]
 
     def dimension(self) -> int:
         return self._dim

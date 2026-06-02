@@ -43,12 +43,12 @@ class ChromaStorage(StorageBackend):
             logger.info("Using local ChromaDB at %s", self._storage_path)
             return chromadb.PersistentClient(path=self._storage_path)
 
-    def add(self, item: MemoryItem) -> None:
+    def add(self, item: MemoryItem, embedding: list[float] | None = None) -> None:
         doc = item.to_prompt_text()
-        self._collection.upsert(
-            ids=[item.id],
-            documents=[doc],
-            metadatas=[{
+        kwargs: dict = {
+            "ids": [item.id],
+            "documents": [doc],
+            "metadatas": [{
                 "task_id": item.task_id,
                 "query": item.query,
                 "status": item.status,
@@ -57,9 +57,12 @@ class ChromaStorage(StorageBackend):
                 "created_at": item.created_at.isoformat(),
                 "memory_items_json": "\n\n".join(item.memory_items),
             }],
-        )
+        }
+        if embedding is not None:
+            kwargs["embeddings"] = [embedding]
+        self._collection.upsert(**kwargs)
 
-    def add_batch(self, items: list[MemoryItem]) -> None:
+    def add_batch(self, items: list[MemoryItem], embeddings: list[list[float]] | None = None) -> None:
         if not items:
             return
         ids, docs, metas = [], [], []
@@ -76,7 +79,10 @@ class ChromaStorage(StorageBackend):
                 "created_at": item.created_at.isoformat(),
                 "memory_items_json": "\n\n".join(item.memory_items),
             })
-        self._collection.upsert(ids=ids, documents=docs, metadatas=metas)
+        kwargs: dict = {"ids": ids, "documents": docs, "metadatas": metas}
+        if embeddings is not None:
+            kwargs["embeddings"] = embeddings
+        self._collection.upsert(**kwargs)
 
     def retrieve(self, query_embedding: list[float], top_k: int) -> list[MemoryItem]:
         if self._collection.count() == 0:

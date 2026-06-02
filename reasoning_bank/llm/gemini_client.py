@@ -31,12 +31,14 @@ class GeminiClient(LLMClient):
     def chat(self, messages: list[dict], system: str | None = None) -> str:
         from google.genai.types import GenerateContentConfig
 
-        # Extract user content from messages
-        user_content = "\n".join(m.get("content", "") for m in messages)
+        # Build content: prepend system instruction to user messages
+        # since not all models (e.g. Gemma) support systemInstruction
+        parts = []
+        if system:
+            parts.append(f"[System]: {system}\n")
+        user_content = "\n".join(parts + [m.get("content", "") for m in messages])
 
         config = GenerateContentConfig(temperature=0.7)
-        if system:
-            config.system_instruction = system
 
         response = self._client.models.generate_content(
             model=self.model,
