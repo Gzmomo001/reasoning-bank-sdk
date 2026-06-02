@@ -14,6 +14,7 @@ from reasoning_bank.core.embedding import (
 )
 from reasoning_bank.core.induction import induce
 from reasoning_bank.core.memory_item import MemoryItem
+from reasoning_bank.core.rate_limiter import RateLimiter, get_embedding_rpm, get_llm_rpm
 from reasoning_bank.core.scaling import induce_scaling
 from reasoning_bank.llm.anthropic_client import AnthropicClient
 from reasoning_bank.llm.base import LLMClient
@@ -68,6 +69,8 @@ class MemoryBank:
         self._storage = self._init_storage(storage, storage_path)
         self._embedding = self._init_embedding(embedding_provider, embedding_model)
         self._llm = llm_client
+        self._llm_limiter = RateLimiter(get_llm_rpm())
+        self._embedding_limiter = RateLimiter(get_embedding_rpm())
 
     # ------------------------------------------------------------------
     # Public API
@@ -75,6 +78,7 @@ class MemoryBank:
 
     def retrieve(self, query: str, top_k: int = 3) -> list[MemoryItem]:
         """Retrieve the top-k most relevant memories for a query."""
+        self._embedding_limiter.wait()
         embeddings = self._embedding.embed([query])
         return self._storage.retrieve(embeddings[0], top_k)
 
@@ -88,6 +92,7 @@ class MemoryBank:
     ) -> list[MemoryItem]:
         """Extract memory items from a single trajectory and store them."""
         self._require_llm()
+        self._llm_limiter.wait()
         items = induce(
             llm=self._llm,
             task_id=task_id,
@@ -108,6 +113,7 @@ class MemoryBank:
     ) -> list[MemoryItem]:
         """Extract memory items by comparing multiple trajectories and store them."""
         self._require_llm()
+        self._llm_limiter.wait()
         items = induce_scaling(
             llm=self._llm,
             task_id=task_id,
@@ -160,13 +166,15 @@ class MemoryBank:
         if not items:
             return
         texts = [item.to_prompt_text() for item in items]
+        self._embedding_limiter.wait()
         embeddings = self._embedding.embed(texts)
-        self._storage.add_batch(items, embeddings=embeddings)
 
-        # For JSONL backend, also store embeddings separately
         if isinstance(self._storage, JsonlStorage):
+            self._storage.add_batch(items)
             for item, emb in zip(items, embeddings):
                 self._storage.store_embedding(item.task_id, emb)
+        else:
+            self._storage.add_batch(items, embeddings=embeddings)
 
     def _require_llm(self) -> None:
         if self._llm is None:

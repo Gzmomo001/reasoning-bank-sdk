@@ -1,35 +1,24 @@
-"""Tests for single-trajectory memory induction."""
+"""Tests for single-trajectory memory induction — real LLM."""
 
 from reasoning_bank.core.induction import induce, _parse_memory_items
-from reasoning_bank.llm.base import LLMClient
 
 
-class _StubLLM(LLMClient):
-    def __init__(self, response: str):
-        self._response = response
-
-    def chat(self, messages, system=None):
-        return self._response
-
-
-def test_induce_success():
-    llm = _StubLLM("# Memory Item 1\n## Title Click nav\n## Content Click the nav element")
-    items = induce(llm, "t1", "go home", "think...\naction...", "success", "web")
-    assert len(items) == 1
+def test_induce_success(llm_with_retry):
+    items = induce(llm_with_retry, "t1", "go home", "think...\naction...", "success", "web")
+    assert len(items) >= 1
     assert items[0].status == "success"
     assert items[0].domain == "web"
 
 
-def test_induce_fail():
-    llm = _StubLLM("# Memory Item 1\n## Title Avoid X\n## Content Don't do X")
-    items = induce(llm, "t2", "go home", "think...\naction...", "fail", "web")
-    assert len(items) == 1
+def test_induce_fail(llm_with_retry):
+    items = induce(llm_with_retry, "t2", "go home", "think...\naction...", "fail", "web")
+    assert len(items) >= 1
     assert items[0].status == "fail"
 
 
-def test_induce_coding_domain():
-    llm = _StubLLM("# Memory Item 1\n## Title Read tests\n## Content Always run tests first")
-    items = induce(llm, "t3", "fix bug", "think...", "success", "coding")
+def test_induce_coding_domain(llm_with_retry):
+    items = induce(llm_with_retry, "t3", "fix bug", "think...", "success", "coding")
+    assert len(items) >= 1
     assert items[0].domain == "coding"
 
 

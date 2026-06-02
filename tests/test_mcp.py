@@ -1,70 +1,38 @@
-"""Tests for MCP server tools."""
+"""Tests for MCP server tools — real embedding + real LLM + ChromaDB."""
 
 import json
-import tempfile
 
-from reasoning_bank import MemoryBank
-from reasoning_bank.core.embedding import CustomEmbedding
+import pytest
+
 from reasoning_bank_mcp import server
 
 
-def _dummy_embed(texts):
-    return [[1.0] * 8 for _ in texts]
-
-
-def _setup_bank(tmp: str) -> MemoryBank:
-    bank = MemoryBank(
-        storage="jsonl",
-        storage_path=tmp,
-        embedding_provider=CustomEmbedding(_dummy_embed, dim=8),
-    )
+@pytest.fixture(autouse=True)
+def setup_mcp_bank(bank):
     server._bank_instance = bank
-    return bank
+    yield
+    server._bank_instance = None
 
 
 def test_add_and_count():
-    with tempfile.TemporaryDirectory() as tmp:
-        _setup_bank(tmp)
-
-        result = server.reasoning_bank_add("t1", "q1", ["m1"])
-        data = json.loads(result)
-        assert data["ok"]
-
-        result = server.reasoning_bank_count()
-        data = json.loads(result)
-        assert data["count"] == 1
+    result = server.reasoning_bank_add("t1", "q1", ["m1"])
+    assert json.loads(result)["ok"]
+    assert json.loads(server.reasoning_bank_count())["count"] == 1
 
 
 def test_list():
-    with tempfile.TemporaryDirectory() as tmp:
-        _setup_bank(tmp)
-
-        server.reasoning_bank_add("t1", "q1", ["m1"])
-        server.reasoning_bank_add("t2", "q2", ["m2"])
-
-        result = server.reasoning_bank_list()
-        data = json.loads(result)
-        assert len(data) == 2
+    server.reasoning_bank_add("t1", "q1", ["m1"])
+    server.reasoning_bank_add("t2", "q2", ["m2"])
+    assert len(json.loads(server.reasoning_bank_list())) == 2
 
 
 def test_delete():
-    with tempfile.TemporaryDirectory() as tmp:
-        _setup_bank(tmp)
-
-        server.reasoning_bank_add("t1", "q1", ["m1"])
-        result = server.reasoning_bank_delete("t1")
-        data = json.loads(result)
-        assert data["ok"]
-
-        result = server.reasoning_bank_count()
-        assert json.loads(result)["count"] == 0
+    server.reasoning_bank_add("t1", "q1", ["m1"])
+    assert json.loads(server.reasoning_bank_delete("t1"))["ok"]
+    assert json.loads(server.reasoning_bank_count())["count"] == 0
 
 
 def test_retrieve():
-    with tempfile.TemporaryDirectory() as tmp:
-        _setup_bank(tmp)
-
-        server.reasoning_bank_add("t1", "fix login", ["use button"])
-        result = server.reasoning_bank_retrieve("fix login", top_k=1)
-        data = json.loads(result)
-        assert len(data) >= 1
+    server.reasoning_bank_add("t1", "fix login", ["use button"])
+    data = json.loads(server.reasoning_bank_retrieve("fix login", top_k=1))
+    assert len(data) >= 1
