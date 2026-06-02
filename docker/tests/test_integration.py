@@ -29,14 +29,14 @@ from conftest import DOCKER_DIR, compose_restart, wait_for_service
 
 
 def _api_add(api_url: str, task_id: str, query: str, memory_items: list[str], **kwargs) -> httpx.Response:
-    resp = httpx.post(f"{api_url}/memory/add", json={
+    resp = httpx.post(f"{api_url}/v1/memory/items", json={
         "task_id": task_id,
         "query": query,
         "memory_items": memory_items,
         "status": kwargs.get("status", "success"),
         "domain": kwargs.get("domain", "general"),
     }, timeout=30)
-    assert resp.status_code == 200, f"Add failed ({resp.status_code}): {resp.text}"
+    assert resp.status_code == 201, f"Add failed ({resp.status_code}): {resp.text}"
     return resp
 
 
@@ -68,32 +68,36 @@ def test_mcp_sse_endpoint_exists(compose_project, mcp_url):
 
 @pytest.mark.integration
 def test_api_empty_count(compose_project, api_url):
-    resp = httpx.get(f"{api_url}/memory/count", timeout=10)
+    resp = httpx.get(f"{api_url}/v1/memory/items/count", timeout=10)
     assert resp.status_code == 200
-    data = resp.json()
+    data = resp.json()["data"]
     assert "count" in data
     assert isinstance(data["count"], int)
 
 
 @pytest.mark.integration
 def test_api_empty_list(compose_project, api_url):
-    resp = httpx.get(f"{api_url}/memory/list", timeout=10)
+    resp = httpx.get(f"{api_url}/v1/memory/items", timeout=10)
     assert resp.status_code == 200
-    assert isinstance(resp.json(), list)
+    body = resp.json()
+    assert "data" in body
+    assert isinstance(body["data"], list)
 
 
 @pytest.mark.integration
 def test_api_empty_retrieve(compose_project, api_url):
-    resp = httpx.post(f"{api_url}/memory/retrieve", json={"query": "test", "top_k": 3}, timeout=30)
+    resp = httpx.post(f"{api_url}/v1/memory/items/search", json={"query": "test", "top_k": 3}, timeout=30)
     assert resp.status_code == 200
-    assert isinstance(resp.json(), list)
+    body = resp.json()
+    assert "data" in body
+    assert isinstance(body["data"], list)
 
 
 @pytest.mark.integration
 def test_api_delete_nonexistent(compose_project, api_url):
-    resp = httpx.post(f"{api_url}/memory/delete", json={"task_id": "nonexistent-task"}, timeout=10)
+    resp = httpx.delete(f"{api_url}/v1/memory/items/nonexistent-task", timeout=10)
     assert resp.status_code == 200
-    assert resp.json()["ok"]
+    assert resp.json()["data"]["deleted"] is True
 
 
 @pytest.mark.integration
@@ -101,9 +105,9 @@ def test_api_add_and_count(compose_project, api_url):
     task_id = f"test-{os.getpid()}"
     _api_add(api_url, task_id, "integration test query", ["memory item from integration test"])
 
-    resp = httpx.get(f"{api_url}/memory/count", timeout=10)
+    resp = httpx.get(f"{api_url}/v1/memory/items/count", timeout=10)
     assert resp.status_code == 200
-    assert resp.json()["count"] >= 1
+    assert resp.json()["data"]["count"] >= 1
 
 
 @pytest.mark.integration
@@ -111,12 +115,12 @@ def test_api_add_and_retrieve(compose_project, api_url):
     task_id = f"retrieve-{os.getpid()}"
     _api_add(api_url, task_id, "how to fix login button", ["click the blue login button", "check credentials"])
 
-    resp = httpx.post(f"{api_url}/memory/retrieve", json={"query": "fix login", "top_k": 3}, timeout=30)
+    resp = httpx.post(f"{api_url}/v1/memory/items/search", json={"query": "fix login", "top_k": 3}, timeout=30)
     assert resp.status_code == 200
-    data = resp.json()
-    assert isinstance(data, list)
-    if data:
-        assert "memory_items" in data[0] or "task_id" in data[0]
+    body = resp.json()
+    assert isinstance(body["data"], list)
+    if body["data"]:
+        assert "memory_items" in body["data"][0] or "task_id" in body["data"][0]
 
 
 @pytest.mark.integration
@@ -124,9 +128,9 @@ def test_api_add_and_delete(compose_project, api_url):
     task_id = f"del-{os.getpid()}"
     _api_add(api_url, task_id, "delete test", ["to be deleted"])
 
-    resp = httpx.post(f"{api_url}/memory/delete", json={"task_id": task_id}, timeout=10)
+    resp = httpx.delete(f"{api_url}/v1/memory/items/{task_id}", timeout=10)
     assert resp.status_code == 200
-    assert resp.json()["ok"]
+    assert resp.json()["data"]["deleted"] is True
 
 
 @pytest.mark.integration
@@ -134,8 +138,8 @@ def test_api_list_returns_added_items(compose_project, api_url):
     task_id = f"list-{os.getpid()}"
     _api_add(api_url, task_id, "list test", ["item for list test"])
 
-    resp = httpx.get(f"{api_url}/memory/list", timeout=10)
-    data = resp.json()
+    resp = httpx.get(f"{api_url}/v1/memory/items", timeout=10)
+    data = resp.json()["data"]
     assert isinstance(data, list)
     task_ids = {item.get("task_id") for item in data}
     assert task_id in task_ids
@@ -222,8 +226,8 @@ def test_data_survives_api_restart(compose_project, api_url):
     compose_restart(compose_project, "api")
     wait_for_service("localhost", 8000, timeout=60)
 
-    resp = httpx.get(f"{api_url}/memory/list", timeout=10)
-    data = resp.json()
+    resp = httpx.get(f"{api_url}/v1/memory/items", timeout=10)
+    data = resp.json()["data"]
     task_ids = {item.get("task_id") for item in data}
     assert task_id in task_ids
 

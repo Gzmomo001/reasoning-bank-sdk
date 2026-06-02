@@ -89,33 +89,7 @@ export STORAGE=chroma
 uv run uvicorn reasoning_bank_api.app:app --host 0.0.0.0 --port 8000
 ```
 
-#### `POST /memory/retrieve`
-
-Retrieve relevant memories via semantic similarity search.
-
-```json
-// Request
-{
-  "query": "how to fix login bug",
-  "top_k": 3
-}
-
-// Response
-[
-  {
-    "id": "a1b2c3...",
-    "task_id": "task-456",
-    "query": "fix login issue",
-    "status": "success",
-    "domain": "web",
-    "memory_items": ["Check the session cookie expiration..."],
-    "template_id": null,
-    "created_at": "2025-01-01T00:00:00+00:00"
-  }
-]
-```
-
-#### `POST /memory/add`
+#### `POST /v1/memory/items`
 
 Add a memory item directly (no LLM needed).
 
@@ -130,23 +104,107 @@ Add a memory item directly (no LLM needed).
   "template_id": null
 }
 
-// Response
-{ "ok": true, "id": "d4e5f6..." }
+// Response — 201 Created
+{
+  "data": {
+    "id": "d4e5f6...",
+    "task_id": "task-101",
+    "query": "Search for products",
+    "status": "success",
+    "domain": "general",
+    "memory_items": ["Always use the search bar in the top navigation"],
+    "template_id": null,
+    "created_at": "2025-01-01T00:00:00+00:00"
+  },
+  "meta": {}
+}
 ```
 
-#### `POST /memory/delete`
+#### `GET /v1/memory/items`
+
+List all stored memories.
+
+```json
+// Response
+{
+  "data": [
+    {
+      "id": "...",
+      "task_id": "task-456",
+      "query": "...",
+      "status": "success",
+      "domain": "web",
+      "memory_items": ["..."],
+      "template_id": null,
+      "created_at": "..."
+    }
+  ],
+  "meta": { "total": 42 }
+}
+```
+
+#### `GET /v1/memory/items/count`
+
+Get the total number of stored memories.
+
+```json
+// Response
+{
+  "data": { "count": 42 },
+  "meta": {}
+}
+```
+
+#### `GET|POST /v1/memory/items/search`
+
+Retrieve relevant memories via semantic similarity search.
+
+GET with query parameters:
+
+```
+GET /v1/memory/items/search?query=how+to+fix+login+bug&top_k=3
+```
+
+POST with JSON body:
+
+```json
+// Request
+{
+  "query": "how to fix login bug",
+  "top_k": 3
+}
+
+// Response
+{
+  "data": [
+    {
+      "id": "a1b2c3...",
+      "task_id": "task-456",
+      "query": "fix login issue",
+      "status": "success",
+      "domain": "web",
+      "memory_items": ["Check the session cookie expiration..."],
+      "template_id": null,
+      "created_at": "2025-01-01T00:00:00+00:00"
+    }
+  ],
+  "meta": { "total": 1 }
+}
+```
+
+#### `DELETE /v1/memory/items/{task_id}`
 
 Delete all memories for a given task ID.
 
 ```json
-// Request
-{ "task_id": "task-456" }
-
 // Response
-{ "ok": true }
+{
+  "data": { "deleted": true, "task_id": "task-456" },
+  "meta": {}
+}
 ```
 
-#### `POST /memory/induce`
+#### `POST /v1/memory/inductions`
 
 Run full auto induction — extract memory items from a single trajectory using LLM.
 
@@ -160,22 +218,25 @@ Run full auto induction — extract memory items from a single trajectory using 
   "domain": "web"
 }
 
-// Response
-[
-  {
-    "id": "...",
-    "task_id": "task-456",
-    "query": "Navigate to shopping cart",
-    "status": "success",
-    "domain": "web",
-    "memory_items": ["The cart icon is located in the top-right corner..."],
-    "template_id": null,
-    "created_at": "..."
-  }
-]
+// Response — 201 Created
+{
+  "data": [
+    {
+      "id": "...",
+      "task_id": "task-456",
+      "query": "Navigate to shopping cart",
+      "status": "success",
+      "domain": "web",
+      "memory_items": ["The cart icon is located in the top-right corner..."],
+      "template_id": null,
+      "created_at": "..."
+    }
+  ],
+  "meta": { "total": 1 }
+}
 ```
 
-#### `POST /memory/induce_scaling`
+#### `POST /v1/memory/inductions/batch`
 
 Run multi-trajectory contrast induction — compare trajectories and extract contrastive insights.
 
@@ -191,48 +252,22 @@ Run multi-trajectory contrast induction — compare trajectories and extract con
   "domain": "web"
 }
 
-// Response
-[
-  {
-    "id": "...",
-    "task_id": "task-789",
-    "query": "Add item to wishlist",
-    "status": "success",
-    "domain": "web",
-    "memory_items": ["The wishlist button is a heart icon, not the cart button..."],
-    "template_id": null,
-    "created_at": "..."
-  }
-]
-```
-
-#### `GET /memory/list`
-
-List all stored memories.
-
-```json
-// Response
-[
-  {
-    "id": "...",
-    "task_id": "task-456",
-    "query": "...",
-    "status": "success",
-    "domain": "web",
-    "memory_items": ["..."],
-    "template_id": null,
-    "created_at": "..."
-  }
-]
-```
-
-#### `GET /memory/count`
-
-Get the total number of stored memories.
-
-```json
-// Response
-{ "count": 42 }
+// Response — 201 Created
+{
+  "data": [
+    {
+      "id": "...",
+      "task_id": "task-789",
+      "query": "Add item to wishlist",
+      "status": "success",
+      "domain": "web",
+      "memory_items": ["The wishlist button is a heart icon, not the cart button..."],
+      "template_id": null,
+      "created_at": "..."
+    }
+  ],
+  "meta": { "total": 1 }
+}
 ```
 
 ### MCP Server

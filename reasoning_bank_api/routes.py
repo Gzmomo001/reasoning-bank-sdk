@@ -1,11 +1,11 @@
-"""HTTP routes for ReasoningBank REST API — thin wrapper over MemoryBank."""
+"""HTTP routes for ReasoningBank REST API — RESTful endpoints over MemoryBank."""
 
 from __future__ import annotations
 
 import os
-from typing import Any
+from datetime import datetime
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel
 
 from reasoning_bank import MemoryBank
@@ -14,17 +14,75 @@ from reasoning_bank.llm.gemini_client import GeminiClient
 from reasoning_bank.llm.openai_client import OpenAIClient
 from reasoning_bank.llm.base import LLMClient
 
-router = APIRouter(prefix="/memory", tags=["memory"])
+router = APIRouter(prefix="/v1/memory", tags=["memory"])
 
 
 # ---------------------------------------------------------------------------
-# Request / response models
+# Response models — specific per endpoint for accurate OpenAPI docs
 # ---------------------------------------------------------------------------
 
-class RetrieveRequest(BaseModel):
+class MemoryItemSchema(BaseModel):
+    """Detailed representation of a stored memory item."""
+    id: str
+    task_id: str
     query: str
-    top_k: int = 3
+    status: str
+    domain: str
+    memory_items: list[str]
+    template_id: str | None
+    created_at: datetime
 
+
+class MetaTotal(BaseModel):
+    total: int
+
+
+class CountData(BaseModel):
+    count: int
+
+
+class DeleteData(BaseModel):
+    deleted: bool
+    task_id: str
+
+
+class IdData(BaseModel):
+    id: str
+
+
+class MemoryListResponse(BaseModel):
+    data: list[MemoryItemSchema]
+    meta: MetaTotal
+
+
+class SearchResponse(BaseModel):
+    data: list[MemoryItemSchema]
+    meta: MetaTotal
+
+
+class CreateItemResponse(BaseModel):
+    data: MemoryItemSchema
+    meta: dict = {}
+
+
+class CountResponse(BaseModel):
+    data: CountData
+    meta: dict = {}
+
+
+class DeleteResponse(BaseModel):
+    data: DeleteData
+    meta: dict = {}
+
+
+class InductionResponse(BaseModel):
+    data: list[MemoryItemSchema]
+    meta: MetaTotal
+
+
+# ---------------------------------------------------------------------------
+# Request models
+# ---------------------------------------------------------------------------
 
 class AddRequest(BaseModel):
     task_id: str
@@ -35,8 +93,9 @@ class AddRequest(BaseModel):
     template_id: str | None = None
 
 
-class DeleteRequest(BaseModel):
-    task_id: str
+class SearchRequest(BaseModel):
+    query: str
+    top_k: int = 3
 
 
 class InduceRequest(BaseModel):
@@ -52,7 +111,7 @@ class TrajectoryItem(BaseModel):
     status: str
 
 
-class InduceScalingRequest(BaseModel):
+class InduceBatchRequest(BaseModel):
     task_id: str
     query: str
     trajectories: list[TrajectoryItem]
@@ -103,18 +162,55 @@ def get_bank() -> MemoryBank:
 
 
 # ---------------------------------------------------------------------------
-# Routes
+# Routes — Memory Items CRUD
 # ---------------------------------------------------------------------------
 
-@router.post("/retrieve")
-def retrieve(req: RetrieveRequest) -> list[dict]:
+@router.get("/items", response_model=MemoryListResponse)
+def list_items() -> MemoryListResponse:
+    """List all stored memories."""
+    bank = get_bank()
+    items = bank.list()
+    return MemoryListResponse(
+        data=[MemoryItemSchema(**item.to_dict()) for item in items],
+        meta=MetaTotal(total=len(items)),
+    )
+
+
+@router.get("/items/count", response_model=CountResponse)
+def count_items() -> CountResponse:
+    """Get total number of stored memories."""
+    bank = get_bank()
+    return CountResponse(data=CountData(count=bank.count()))
+
+
+@router.get("/items/search", response_model=SearchResponse)
+def search_items_get(
+    query: str = Query(..., description="Search query text"),
+    top_k: int = Query(3, ge=1, description="Number of results to return"),
+) -> SearchResponse:
+    """Retrieve relevant memories (simple query via GET params)."""
+    bank = get_bank()
+    items = bank.retrieve(query=query, top_k=top_k)
+    return SearchResponse(
+        data=[MemoryItemSchema(**item.to_dict()) for item in items],
+        meta=MetaTotal(total=len(items)),
+    )
+
+
+@router.post("/items/search", response_model=SearchResponse)
+def search_items_post(req: SearchRequest) -> SearchResponse:
+    """Retrieve relevant memories (complex query via POST body)."""
     bank = get_bank()
     items = bank.retrieve(query=req.query, top_k=req.top_k)
-    return [item.to_dict() for item in items]
+    return SearchResponse(
+        data=[MemoryItemSchema(**item.to_dict()) for item in items],
+        meta=MetaTotal(total=len(items)),
+    )
 
 
-@router.post("/add")
-def add(req: AddRequest) -> dict:
+@router.post("/items", status_code=201, response_model=CreateItemResponse)
+def create_item(req: AddRequest) -> CreateItemResponse:
+    """Add a memory item directly."""
     bank = get_bank()
     item = bank.add(
         task_id=req.task_id,
@@ -124,30 +220,24 @@ def add(req: AddRequest) -> dict:
         domain=req.domain,
         template_id=req.template_id,
     )
-    return {"ok": True, "id": item.id}
+    return CreateItemResponse(data=MemoryItemSchema(**item.to_dict()))
 
 
-@router.post("/delete")
-def delete(req: DeleteRequest) -> dict:
+@router.delete("/items/{task_id}", response_model=DeleteResponse)
+def delete_item(task_id: str) -> DeleteResponse:
+    """Delete all memories for a given task ID."""
     bank = get_bank()
-    bank.delete(task_id=req.task_id)
-    return {"ok": True}
+    bank.delete(task_id=task_id)
+    return DeleteResponse(data=DeleteData(deleted=True, task_id=task_id))
 
 
-@router.get("/list")
-def list_memories() -> list[dict]:
-    bank = get_bank()
-    return [item.to_dict() for item in bank.list()]
+# ---------------------------------------------------------------------------
+# Routes — Inductions
+# ---------------------------------------------------------------------------
 
-
-@router.get("/count")
-def count() -> dict:
-    bank = get_bank()
-    return {"count": bank.count()}
-
-
-@router.post("/induce")
-def induce(req: InduceRequest) -> list[dict]:
+@router.post("/inductions", status_code=201, response_model=InductionResponse)
+def create_induction(req: InduceRequest) -> InductionResponse:
+    """Run single-trajectory auto induction using LLM."""
     bank = get_bank()
     try:
         items = bank.induce(
@@ -159,11 +249,15 @@ def induce(req: InduceRequest) -> list[dict]:
         )
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
-    return [item.to_dict() for item in items]
+    return InductionResponse(
+        data=[MemoryItemSchema(**item.to_dict()) for item in items],
+        meta=MetaTotal(total=len(items)),
+    )
 
 
-@router.post("/induce_scaling")
-def induce_scaling(req: InduceScalingRequest) -> list[dict]:
+@router.post("/inductions/batch", status_code=201, response_model=InductionResponse)
+def create_induction_batch(req: InduceBatchRequest) -> InductionResponse:
+    """Run multi-trajectory contrast induction."""
     bank = get_bank()
     try:
         items = bank.induce_scaling(
@@ -174,4 +268,7 @@ def induce_scaling(req: InduceScalingRequest) -> list[dict]:
         )
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
-    return [item.to_dict() for item in items]
+    return InductionResponse(
+        data=[MemoryItemSchema(**item.to_dict()) for item in items],
+        meta=MetaTotal(total=len(items)),
+    )

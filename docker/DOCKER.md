@@ -101,31 +101,31 @@ ls logs/mcp/     # mcp.log
 
 ## API 接口
 
-所有 API 路由以 `/memory` 为前缀。完整文档见 `http://localhost:8000/docs`。
+所有 API 路由以 `/v1/memory` 为前缀。完整文档见 `http://localhost:8000/docs`。
 
 ### 记忆操作（需要 Embedding，不需要 LLM）
 
 | 方法 | 路径 | 说明 |
 |------|------|------|
-| POST | `/memory/add` | 直接添加记忆条目 |
-| POST | `/memory/retrieve` | 语义检索 top-k 记忆 |
-| POST | `/memory/delete` | 删除指定 task_id 的记忆 |
-| GET | `/memory/list` | 列出所有记忆 |
-| GET | `/memory/count` | 获取记忆总数 |
+| POST | `/v1/memory/items` | 直接添加记忆条目 |
+| GET | `/v1/memory/items` | 列出所有记忆 |
+| GET | `/v1/memory/items/count` | 获取记忆总数 |
+| GET/POST | `/v1/memory/items/search` | 语义检索 top-k 记忆 |
+| DELETE | `/v1/memory/items/{task_id}` | 删除指定 task_id 的记忆 |
 
 ### 归纳操作（需要 LLM）
 
 | 方法 | 路径 | 说明 |
 |------|------|------|
-| POST | `/memory/induce` | 从单条轨迹归纳记忆 |
-| POST | `/memory/induce_scaling` | 多轨迹对比归纳 |
+| POST | `/v1/memory/inductions` | 从单条轨迹归纳记忆 |
+| POST | `/v1/memory/inductions/batch` | 多轨迹对比归纳 |
 
 ### 请求示例
 
 **添加记忆：**
 
 ```bash
-curl -X POST http://localhost:8000/memory/add \
+curl -X POST http://localhost:8000/v1/memory/items \
   -H "Content-Type: application/json" \
   -d '{
     "task_id": "task-001",
@@ -139,15 +139,25 @@ curl -X POST http://localhost:8000/memory/add \
 **检索记忆：**
 
 ```bash
-curl -X POST http://localhost:8000/memory/retrieve \
+# GET 方式
+curl "http://localhost:8000/v1/memory/items/search?query=how+to+login&top_k=3"
+
+# POST 方式
+curl -X POST http://localhost:8000/v1/memory/items/search \
   -H "Content-Type: application/json" \
   -d '{"query": "how to login", "top_k": 3}'
+```
+
+**删除记忆：**
+
+```bash
+curl -X DELETE http://localhost:8000/v1/memory/items/task-001
 ```
 
 **轨迹归纳（需要 LLM）：**
 
 ```bash
-curl -X POST http://localhost:8000/memory/induce \
+curl -X POST http://localhost:8000/v1/memory/inductions \
   -H "Content-Type: application/json" \
   -d '{
     "task_id": "task-002",
