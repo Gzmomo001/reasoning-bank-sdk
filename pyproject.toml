@@ -51,4 +51,5 @@ testpaths = ["tests"]
 [dependency-groups]
 dev = [
     "pyyaml>=6.0.3",
+    "ruff>=0.15.15",
 ]
