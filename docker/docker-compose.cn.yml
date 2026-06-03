@@ -24,7 +24,7 @@ services:
       - reasoning-bank
 
   api:
-    image: ghcr.io/gzmomo001/reasoning-bank-sdk-api:latest
+    image: ghcr.nju.edu.cn/gzmomo001/reasoning-bank-sdk-api:latest
     container_name: rb-api
     ports:
       - "8000:8000"
@@ -63,7 +63,7 @@ services:
       - reasoning-bank
 
   mcp:
-    image: ghcr.io/gzmomo001/reasoning-bank-sdk-mcp:latest
+    image: ghcr.nju.edu.cn/gzmomo001/reasoning-bank-sdk-mcp:latest
     container_name: rb-mcp
     ports:
       - "9000:9000"
@@ -104,7 +104,7 @@ services:
       - reasoning-bank
 
   inspector:
-    image: ghcr.io/modelcontextprotocol/inspector:latest
+    image: ghcr.nju.edu.cn/modelcontextprotocol/inspector:latest
     container_name: rb-inspector
     ports:
       - "6274:6274"

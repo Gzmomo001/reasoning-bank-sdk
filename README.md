@@ -18,6 +18,10 @@ Persistent agent memory with induction, retrieval, and scaling. ReasoningBank le
 ```bash
 uv sync
 git config core.hooksPath .githooks
+
+# config .env
+# if you want to deploy with Docker, copy .env.example to the docker folder.
+cp .env.example .env
 ```
 
 Requires Python >= 3.12.
@@ -76,13 +80,6 @@ bank.delete(item_id=item.id)
 ### REST API
 
 ```bash
-# Set environment variables
-export LLM_PROVIDER=openai
-export LLM_MODEL=gpt-4o
-export LLM_API_KEY=sk-...
-export EMBEDDING_PROVIDER=gemini
-export STORAGE=chroma
-
 # Start the server
 uv run uvicorn reasoning_bank_api.app:app --host 0.0.0.0 --port 8000
 ```
@@ -257,11 +254,7 @@ Run multi-trajectory contrast induction — compare trajectories and extract con
 ### MCP Server
 
 ```bash
-# Via entry point (stdio transport)
-reasoning-bank-mcp
-
-# Or with Streamable HTTP transport
-reasoning-bank-mcp --transport streamable-http --port 9000
+uv run reasoning-bank-mcp --transport streamable-http --port 9000
 ```
 
 #### MCP Tools
@@ -424,6 +417,8 @@ A web UI for interactively testing MCP tools and resources.
 uv run reasoning-bank-mcp --transport streamable-http --port 9000
 
 # Then launch inspector
+pnpm dlx @modelcontextprotocol/inspector
+# or
 bash scripts/inspector.sh
 ```
 

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import os
+from datetime import datetime  # noqa: TC003
 from typing import TYPE_CHECKING, Annotated
 
 from fastapi import APIRouter, HTTPException, Query
@@ -15,8 +16,6 @@ from reasoning_bank.llm.gemini_client import GeminiClient
 from reasoning_bank.llm.openai_client import OpenAIClient
 
 if TYPE_CHECKING:
-    from datetime import datetime
-
     from reasoning_bank.llm.base import LLMClient
 
 router = APIRouter(prefix="/v1/memory", tags=["memory"])
