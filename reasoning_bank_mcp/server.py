@@ -5,8 +5,10 @@ from __future__ import annotations
 import argparse
 import json
 import os
+from pathlib import Path
 from typing import TYPE_CHECKING
 
+from dotenv import load_dotenv
 from mcp.server.fastmcp import FastMCP
 
 from reasoning_bank import MemoryBank
@@ -18,7 +20,7 @@ from reasoning_bank.logging_config import setup_logging
 if TYPE_CHECKING:
     from reasoning_bank.llm.base import LLMClient
 
-mcp = FastMCP("ReasoningBank")
+mcp = FastMCP("ReasoningBank", host="127.0.0.1", port=9000)
 
 
 # ---------------------------------------------------------------------------
@@ -156,6 +158,9 @@ def stats() -> str:
 
 
 def main():
+    # Load .env from CWD or project root
+    load_dotenv(Path.cwd() / ".env", override=False)
+
     parser = argparse.ArgumentParser(description="ReasoningBank MCP Server")
     parser.add_argument("--transport", choices=["stdio", "sse", "streamable-http"], default="stdio")
     parser.add_argument("--port", type=int, default=9000)
@@ -163,10 +168,7 @@ def main():
 
     setup_logging("mcp")
 
-    if args.transport in ("sse", "streamable-http"):
-        mcp.run(transport=args.transport, port=args.port)
-    else:
-        mcp.run(transport="stdio")
+    mcp.run(transport=args.transport)
 
 
 if __name__ == "__main__":
