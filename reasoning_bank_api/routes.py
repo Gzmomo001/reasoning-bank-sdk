@@ -124,22 +124,6 @@ class InduceBatchRequest(BaseModel):
 # ---------------------------------------------------------------------------
 
 
-def _get_bank() -> MemoryBank:
-    """Create a MemoryBank from environment configuration."""
-    storage = os.environ.get("STORAGE", "chroma")
-    storage_path = os.environ.get("STORAGE_PATH", "./memories")
-    emb_provider = os.environ.get("EMBEDDING_PROVIDER", "gemini")
-    emb_model = os.environ.get("EMBEDDING_MODEL")
-    llm = _get_llm()
-    return MemoryBank(
-        storage=storage,
-        storage_path=storage_path,
-        embedding_provider=emb_provider,
-        embedding_model=emb_model,
-        llm_client=llm,
-    )
-
-
 def _get_llm() -> LLMClient | None:
     provider = os.environ.get("LLM_PROVIDER", "")
     model = os.environ.get("LLM_MODEL", "")
@@ -152,13 +136,29 @@ def _get_llm() -> LLMClient | None:
     return OpenAIClient(model=model)
 
 
+async def _create_bank() -> MemoryBank:
+    """Create a MemoryBank from environment configuration."""
+    storage = os.environ.get("STORAGE", "chroma")
+    storage_path = os.environ.get("STORAGE_PATH", "./memories")
+    emb_provider = os.environ.get("EMBEDDING_PROVIDER", "gemini")
+    emb_model = os.environ.get("EMBEDDING_MODEL")
+    llm = _get_llm()
+    return await MemoryBank.create(
+        storage=storage,
+        storage_path=storage_path,
+        embedding_provider=emb_provider,
+        embedding_model=emb_model,
+        llm_client=llm,
+    )
+
+
 _bank: MemoryBank | None = None
 
 
-def get_bank() -> MemoryBank:
+async def get_bank() -> MemoryBank:
     global _bank  # noqa: PLW0603
     if _bank is None:
-        _bank = _get_bank()
+        _bank = await _create_bank()
     return _bank
 
 
@@ -168,10 +168,10 @@ def get_bank() -> MemoryBank:
 
 
 @router.get("/items", response_model=MemoryListResponse)
-def list_items() -> MemoryListResponse:
+async def list_items() -> MemoryListResponse:
     """List all stored memories."""
-    bank = get_bank()
-    items = bank.list()
+    bank = await get_bank()
+    items = await bank.list()
     return MemoryListResponse(
         data=[MemoryItemSchema(**item.to_dict()) for item in items],
         meta=MetaTotal(total=len(items)),
@@ -179,20 +179,20 @@ def list_items() -> MemoryListResponse:
 
 
 @router.get("/items/count", response_model=CountResponse)
-def count_items() -> CountResponse:
+async def count_items() -> CountResponse:
     """Get total number of stored memories."""
-    bank = get_bank()
-    return CountResponse(data=CountData(count=bank.count()))
+    bank = await get_bank()
+    return CountResponse(data=CountData(count=await bank.count()))
 
 
 @router.get("/items/search", response_model=SearchResponse)
-def search_items_get(
+async def search_items_get(
     query: Annotated[str, Query(description="Search query text")],
     top_k: Annotated[int, Query(ge=1, description="Number of results to return")] = 3,
 ) -> SearchResponse:
     """Retrieve relevant memories (simple query via GET params)."""
-    bank = get_bank()
-    items = bank.retrieve(query=query, top_k=top_k)
+    bank = await get_bank()
+    items = await bank.retrieve(query=query, top_k=top_k)
     return SearchResponse(
         data=[MemoryItemSchema(**item.to_dict()) for item in items],
         meta=MetaTotal(total=len(items)),
@@ -200,10 +200,10 @@ def search_items_get(
 
 
 @router.post("/items/search", response_model=SearchResponse)
-def search_items_post(req: SearchRequest) -> SearchResponse:
+async def search_items_post(req: SearchRequest) -> SearchResponse:
     """Retrieve relevant memories (complex query via POST body)."""
-    bank = get_bank()
-    items = bank.retrieve(query=req.query, top_k=req.top_k)
+    bank = await get_bank()
+    items = await bank.retrieve(query=req.query, top_k=req.top_k)
     return SearchResponse(
         data=[MemoryItemSchema(**item.to_dict()) for item in items],
         meta=MetaTotal(total=len(items)),
@@ -211,10 +211,10 @@ def search_items_post(req: SearchRequest) -> SearchResponse:
 
 
 @router.post("/items", status_code=201, response_model=CreateItemResponse)
-def create_item(req: AddRequest) -> CreateItemResponse:
+async def create_item(req: AddRequest) -> CreateItemResponse:
     """Add a memory item directly."""
-    bank = get_bank()
-    item = bank.add(
+    bank = await get_bank()
+    item = await bank.add(
         query=req.query,
         memory_items=req.memory_items,
         status=req.status,
@@ -224,10 +224,10 @@ def create_item(req: AddRequest) -> CreateItemResponse:
 
 
 @router.delete("/items/{item_id}", response_model=DeleteResponse)
-def delete_item(item_id: str) -> DeleteResponse:
+async def delete_item(item_id: str) -> DeleteResponse:
     """Delete a memory item by its ID."""
-    bank = get_bank()
-    bank.delete(item_id=item_id)
+    bank = await get_bank()
+    await bank.delete(item_id=item_id)
     return DeleteResponse(data=DeleteData(deleted=True, id=item_id))
 
 
@@ -237,11 +237,11 @@ def delete_item(item_id: str) -> DeleteResponse:
 
 
 @router.post("/inductions", status_code=201, response_model=InductionResponse)
-def create_induction(req: InduceRequest) -> InductionResponse:
+async def create_induction(req: InduceRequest) -> InductionResponse:
     """Run single-trajectory auto induction using LLM."""
-    bank = get_bank()
+    bank = await get_bank()
     try:
-        items = bank.induce(
+        items = await bank.induce(
             query=req.query,
             trajectory=req.trajectory,
             status=req.status,
@@ -256,11 +256,11 @@ def create_induction(req: InduceRequest) -> InductionResponse:
 
 
 @router.post("/inductions/batch", status_code=201, response_model=InductionResponse)
-def create_induction_batch(req: InduceBatchRequest) -> InductionResponse:
+async def create_induction_batch(req: InduceBatchRequest) -> InductionResponse:
     """Run multi-trajectory contrast induction."""
-    bank = get_bank()
+    bank = await get_bank()
     try:
-        items = bank.induce_scaling(
+        items = await bank.induce_scaling(
             query=req.query,
             trajectories=[t.model_dump() for t in req.trajectories],
             domain=req.domain,

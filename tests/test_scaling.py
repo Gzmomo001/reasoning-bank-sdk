@@ -3,8 +3,8 @@
 from reasoning_bank.core.scaling import _parse_memory_items, induce_scaling
 
 
-def test_scaling_basic(llm_with_retry):
-    items = induce_scaling(
+async def test_scaling_basic(llm_with_retry):
+    items = await induce_scaling(
         llm_with_retry,
         "t1",
         "find item",
@@ -18,8 +18,8 @@ def test_scaling_basic(llm_with_retry):
     assert items[0].status == "mixed"
 
 
-def test_scaling_multiple_items(llm_with_retry):
-    items = induce_scaling(
+async def test_scaling_multiple_items(llm_with_retry):
+    items = await induce_scaling(
         llm_with_retry,
         "t2",
         "search",

@@ -7,50 +7,51 @@ import pytest
 from reasoning_bank import MemoryBank, MemoryItem
 
 
-def test_add_and_count(bank):
-    assert bank.count() == 0
-    bank.add(query="q1", memory_items=["m1"], status="success")
-    assert bank.count() == 1
-    bank.add(query="q2", memory_items=["m2"], status="fail")
-    assert bank.count() == 2
+async def test_add_and_count(bank):
+    assert await bank.count() == 0
+    await bank.add(query="q1", memory_items=["m1"], status="success")
+    assert await bank.count() == 1
+    await bank.add(query="q2", memory_items=["m2"], status="fail")
+    assert await bank.count() == 2
 
 
-def test_list(bank):
-    bank.add(query="q1", memory_items=["m1"])
-    bank.add(query="q2", memory_items=["m2"])
-    items = bank.list()
+async def test_list(bank):
+    await bank.add(query="q1", memory_items=["m1"])
+    await bank.add(query="q2", memory_items=["m2"])
+    items = await bank.list()
     assert len(items) == 2
     assert {i.query for i in items} == {"q1", "q2"}
 
 
-def test_delete(bank):
-    item1 = bank.add(query="q1", memory_items=["m1"])
-    bank.add(query="q2", memory_items=["m2"])
-    bank.delete(item1.id)
-    assert bank.count() == 1
-    assert bank.list()[0].query == "q2"
+async def test_delete(bank):
+    item1 = await bank.add(query="q1", memory_items=["m1"])
+    await bank.add(query="q2", memory_items=["m2"])
+    await bank.delete(item1.id)
+    assert await bank.count() == 1
+    items = await bank.list()
+    assert items[0].query == "q2"
 
 
-def test_retrieve(bank):
-    bank.add(query="fix login", memory_items=["use correct button"])
-    bank.add(query="search items", memory_items=["use search bar"])
-    results = bank.retrieve(query="fix login", top_k=1)
+async def test_retrieve(bank):
+    await bank.add(query="fix login", memory_items=["use correct button"])
+    await bank.add(query="search items", memory_items=["use search bar"])
+    results = await bank.retrieve(query="fix login", top_k=1)
     assert len(results) == 1
 
 
-def test_induce(bank, llm_with_retry):
-    items = bank.induce(
+async def test_induce(bank, llm_with_retry):
+    items = await bank.induce(
         query="go to cart",
         trajectory="think...\naction...",
         status="success",
         domain="web",
     )
     assert len(items) >= 1
-    assert bank.count() >= 1
+    assert await bank.count() >= 1
 
 
-def test_induce_scaling(bank, llm_with_retry):
-    items = bank.induce_scaling(
+async def test_induce_scaling(bank, llm_with_retry):
+    items = await bank.induce_scaling(
         query="find cheapest",
         trajectories=[
             {"trajectory": "traj1...", "status": "success"},
@@ -59,17 +60,17 @@ def test_induce_scaling(bank, llm_with_retry):
         domain="web",
     )
     assert len(items) >= 1
-    assert bank.count() >= 1
+    assert await bank.count() >= 1
 
 
-def test_induce_requires_llm(tmp_path):
-    bank = MemoryBank(
+async def test_induce_requires_llm(tmp_path):
+    bank = await MemoryBank.create(
         storage="chroma",
         storage_path=str(tmp_path / "memories"),
         embedding_provider=os.environ.get("EMBEDDING_PROVIDER", "gemini"),
     )
     with pytest.raises(ValueError):
-        bank.induce(query="q", trajectory="tr", status="success")
+        await bank.induce(query="q", trajectory="tr", status="success")
 
 
 def test_memory_item_to_prompt_text():

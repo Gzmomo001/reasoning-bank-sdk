@@ -1,7 +1,7 @@
 """Shared fixtures for integration tests using real model APIs."""
 
+import asyncio
 import os
-import time
 
 import pytest
 from dotenv import load_dotenv
@@ -38,11 +38,11 @@ def llm():
 
 
 @pytest.fixture
-def bank(llm_with_retry, tmp_path):
+async def bank(llm_with_retry, tmp_path):
     """MemoryBank with real embedding + real LLM (with retry) + ChromaDB in a temp directory."""
     from reasoning_bank import MemoryBank  # noqa: PLC0415
 
-    return MemoryBank(
+    return await MemoryBank.create(
         storage="chroma",
         storage_path=str(tmp_path / "memories"),
         embedding_provider=os.environ.get("EMBEDDING_PROVIDER", "gemini"),
@@ -64,18 +64,18 @@ def llm_with_retry():
         def __getattr__(self, name):
             return getattr(self._inner, name)
 
-        def chat(self, messages, system=None):
+        async def chat(self, messages, system=None):
             last_err = None
             for attempt in range(self._max_retries):
-                _llm_limiter.wait()
+                await _llm_limiter.wait()
                 try:
-                    return self._inner.chat(messages, system=system)
+                    return await self._inner.chat(messages, system=system)
                 except Exception as e:
                     err_str = str(e)
                     if "500" in err_str or "502" in err_str or "503" in err_str or "429" in err_str:
                         last_err = e
                         if attempt < self._max_retries - 1:
-                            time.sleep(self._delay)
+                            await asyncio.sleep(self._delay)
                             continue
                     raise
             raise last_err  # type: ignore[misc]

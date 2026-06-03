@@ -43,10 +43,10 @@ def _get_llm() -> LLMClient | None:
 _bank_instance: MemoryBank | None = None
 
 
-def _get_or_create_bank() -> MemoryBank:
+async def _get_or_create_bank() -> MemoryBank:
     global _bank_instance  # noqa: PLW0603
     if _bank_instance is None:
-        _bank_instance = MemoryBank(
+        _bank_instance = await MemoryBank.create(
             storage=os.environ.get("STORAGE", "chroma"),
             storage_path=os.environ.get("STORAGE_PATH", "./memories"),
             embedding_provider=os.environ.get("EMBEDDING_PROVIDER", "gemini"),
@@ -56,31 +56,29 @@ def _get_or_create_bank() -> MemoryBank:
     return _bank_instance
 
 
-def _bank() -> MemoryBank:
-    return _get_or_create_bank()
-
-
 # ---------------------------------------------------------------------------
 # MCP Tools
 # ---------------------------------------------------------------------------
 
 
 @mcp.tool()
-def reasoning_bank_retrieve(query: str, top_k: int = 3) -> str:
+async def reasoning_bank_retrieve(query: str, top_k: int = 3) -> str:
     """Retrieve relevant memories from the ReasoningBank."""
-    items = _bank().retrieve(query=query, top_k=top_k)
+    bank = await _get_or_create_bank()
+    items = await bank.retrieve(query=query, top_k=top_k)
     return json.dumps([item.to_dict() for item in items], indent=2)
 
 
 @mcp.tool()
-def reasoning_bank_add(
+async def reasoning_bank_add(
     query: str,
     memory_items: list[str],
     status: str = "success",
     domain: str = "general",
 ) -> str:
     """Add a memory item directly to the ReasoningBank (no LLM induction)."""
-    item = _bank().add(
+    bank = await _get_or_create_bank()
+    item = await bank.add(
         query=query,
         memory_items=memory_items,
         status=status,
@@ -90,14 +88,15 @@ def reasoning_bank_add(
 
 
 @mcp.tool()
-def reasoning_bank_induce(
+async def reasoning_bank_induce(
     query: str,
     trajectory: str,
     status: str,
     domain: str = "web",
 ) -> str:
     """Run full auto induction: extract memory items from a single trajectory using LLM."""
-    items = _bank().induce(
+    bank = await _get_or_create_bank()
+    items = await bank.induce(
         query=query,
         trajectory=trajectory,
         status=status,
@@ -107,13 +106,14 @@ def reasoning_bank_induce(
 
 
 @mcp.tool()
-def reasoning_bank_induce_scaling(
+async def reasoning_bank_induce_scaling(
     query: str,
     trajectories: list[dict],
     domain: str = "web",
 ) -> str:
     """Run multi-trajectory contrast induction: compare trajectories and extract memory items."""
-    items = _bank().induce_scaling(
+    bank = await _get_or_create_bank()
+    items = await bank.induce_scaling(
         query=query,
         trajectories=trajectories,
         domain=domain,
@@ -122,23 +122,26 @@ def reasoning_bank_induce_scaling(
 
 
 @mcp.tool()
-def reasoning_bank_list() -> str:
+async def reasoning_bank_list() -> str:
     """List all memories stored in the ReasoningBank."""
-    items = _bank().list()
+    bank = await _get_or_create_bank()
+    items = await bank.list()
     return json.dumps([item.to_dict() for item in items], indent=2)
 
 
 @mcp.tool()
-def reasoning_bank_delete(item_id: str) -> str:
+async def reasoning_bank_delete(item_id: str) -> str:
     """Delete a memory item by its ID."""
-    _bank().delete(item_id=item_id)
+    bank = await _get_or_create_bank()
+    await bank.delete(item_id=item_id)
     return json.dumps({"ok": True})
 
 
 @mcp.tool()
-def reasoning_bank_count() -> str:
+async def reasoning_bank_count() -> str:
     """Return the total number of stored memories."""
-    return json.dumps({"count": _bank().count()})
+    bank = await _get_or_create_bank()
+    return json.dumps({"count": await bank.count()})
 
 
 # ---------------------------------------------------------------------------
@@ -147,9 +150,10 @@ def reasoning_bank_count() -> str:
 
 
 @mcp.resource("reasoning-bank://stats")
-def stats() -> str:
+async def stats() -> str:
     """Return ReasoningBank statistics."""
-    return json.dumps({"count": _bank().count()})
+    bank = await _get_or_create_bank()
+    return json.dumps({"count": await bank.count()})
 
 
 # ---------------------------------------------------------------------------

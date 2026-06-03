@@ -35,7 +35,7 @@ class MemoryBank:
 
     Usage::
 
-        bank = MemoryBank(
+        bank = await MemoryBank.create(
             storage="chroma",
             storage_path="./memories",
             embedding_provider="gemini",
@@ -44,10 +44,10 @@ class MemoryBank:
         )
 
         # Retrieve relevant memories
-        memories = bank.retrieve(query="fix login bug", top_k=3)
+        memories = await bank.retrieve(query="fix login bug", top_k=3)
 
         # Induce memories from a trajectory
-        items = bank.induce(
+        items = await bank.induce(
             query="Navigate to shopping cart",
             trajectory="...",
             status="success",
@@ -57,29 +57,52 @@ class MemoryBank:
 
     def __init__(
         self,
+        storage: StorageBackend,
+        embedding: EmbeddingProvider,
+        llm: LLMClient | None,
+        llm_limiter: RateLimiter,
+        embedding_limiter: RateLimiter,
+    ) -> None:
+        """Private constructor. Use ``MemoryBank.create()`` instead."""
+        self._storage = storage
+        self._embedding = embedding
+        self._llm = llm
+        self._llm_limiter = llm_limiter
+        self._embedding_limiter = embedding_limiter
+
+    @classmethod
+    async def create(
+        cls,
         storage: str = "chroma",
         storage_path: str = "./memories",
         embedding_provider: str | EmbeddingProvider = "gemini",
         embedding_model: str | None = None,
         llm_client: LLMClient | None = None,
-    ) -> None:
-        self._storage = self._init_storage(storage, storage_path)
-        self._embedding = self._init_embedding(embedding_provider, embedding_model)
-        self._llm = llm_client
-        self._llm_limiter = RateLimiter(get_llm_rpm())
-        self._embedding_limiter = RateLimiter(get_embedding_rpm())
+    ) -> MemoryBank:
+        """Create and initialize a MemoryBank instance."""
+        storage_backend = await cls._init_storage(storage, storage_path)
+        embedding = cls._init_embedding(embedding_provider, embedding_model)
+        llm_limiter = RateLimiter(get_llm_rpm())
+        embedding_limiter = RateLimiter(get_embedding_rpm())
+        return cls(
+            storage=storage_backend,
+            embedding=embedding,
+            llm=llm_client,
+            llm_limiter=llm_limiter,
+            embedding_limiter=embedding_limiter,
+        )
 
     # ------------------------------------------------------------------
     # Public API
     # ------------------------------------------------------------------
 
-    def retrieve(self, query: str, top_k: int = 3) -> list[MemoryItem]:
+    async def retrieve(self, query: str, top_k: int = 3) -> list[MemoryItem]:
         """Retrieve the top-k most relevant memories for a query."""
-        self._embedding_limiter.wait()
-        embeddings = self._embedding.embed([query])
-        return self._storage.retrieve(embeddings[0], top_k)
+        await self._embedding_limiter.wait()
+        embeddings = await self._embedding.embed([query])
+        return await self._storage.retrieve(embeddings[0], top_k)
 
-    def induce(
+    async def induce(
         self,
         query: str,
         trajectory: str,
@@ -88,18 +111,18 @@ class MemoryBank:
     ) -> list[MemoryItem]:
         """Extract memory items from a single trajectory and store them."""
         self._require_llm()
-        self._llm_limiter.wait()
-        items = induce(
+        await self._llm_limiter.wait()
+        items = await induce(
             llm=self._llm,
             query=query,
             trajectory=trajectory,
             status=status,
             domain=domain,
         )
-        self._store_with_embeddings(items)
+        await self._store_with_embeddings(items)
         return items
 
-    def induce_scaling(
+    async def induce_scaling(
         self,
         query: str,
         trajectories: list[dict],
@@ -107,17 +130,17 @@ class MemoryBank:
     ) -> list[MemoryItem]:
         """Extract memory items by comparing multiple trajectories and store them."""
         self._require_llm()
-        self._llm_limiter.wait()
-        items = induce_scaling(
+        await self._llm_limiter.wait()
+        items = await induce_scaling(
             llm=self._llm,
             query=query,
             trajectories=trajectories,
             domain=domain,
         )
-        self._store_with_embeddings(items)
+        await self._store_with_embeddings(items)
         return items
 
-    def add(
+    async def add(
         self,
         query: str,
         memory_items: list[str],
@@ -131,39 +154,39 @@ class MemoryBank:
             domain=domain,
             memory_items=memory_items,
         )
-        self._store_with_embeddings([item])
+        await self._store_with_embeddings([item])
         return item
 
-    def delete(self, item_id: str) -> None:
+    async def delete(self, item_id: str) -> None:
         """Delete a memory item by its ID."""
-        self._storage.delete(item_id)
+        await self._storage.delete(item_id)
 
-    def list(self) -> list[MemoryItem]:
+    async def list(self) -> list[MemoryItem]:
         """List all stored memory items."""
-        return self._storage.list_all()
+        return await self._storage.list_all()
 
-    def count(self) -> int:
+    async def count(self) -> int:
         """Return the total number of stored memory items."""
-        return self._storage.count()
+        return await self._storage.count()
 
     # ------------------------------------------------------------------
     # Internals
     # ------------------------------------------------------------------
 
-    def _store_with_embeddings(self, items: list[MemoryItem]) -> None:
+    async def _store_with_embeddings(self, items: list[MemoryItem]) -> None:
         """Compute embeddings and persist items."""
         if not items:
             return
         texts = [item.to_prompt_text() for item in items]
-        self._embedding_limiter.wait()
-        embeddings = self._embedding.embed(texts)
+        await self._embedding_limiter.wait()
+        embeddings = await self._embedding.embed(texts)
 
         if isinstance(self._storage, JsonlStorage):
-            self._storage.add_batch(items)
+            await self._storage.add_batch(items)
             for item, emb in zip(items, embeddings, strict=False):
-                self._storage.store_embedding(item.id, emb)
+                await self._storage.store_embedding(item.id, emb)
         else:
-            self._storage.add_batch(items, embeddings=embeddings)
+            await self._storage.add_batch(items, embeddings=embeddings)
 
     def _require_llm(self) -> None:
         if self._llm is None:
@@ -171,9 +194,9 @@ class MemoryBank:
             raise ValueError(msg)
 
     @staticmethod
-    def _init_storage(backend: str, path: str) -> StorageBackend:
+    async def _init_storage(backend: str, path: str) -> StorageBackend:
         if backend == "chroma":
-            return ChromaStorage(storage_path=path)
+            return await ChromaStorage.create(storage_path=path)
         if backend == "jsonl":
             return JsonlStorage(storage_path=path)
         msg = f"Unknown storage backend: {backend!r}. Use 'chroma' or 'jsonl'."

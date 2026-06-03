@@ -3,21 +3,21 @@
 from reasoning_bank.core.induction import _parse_memory_items, induce
 
 
-def test_induce_success(llm_with_retry):
-    items = induce(llm_with_retry, "t1", "go home", "think...\naction...", "success", "web")
+async def test_induce_success(llm_with_retry):
+    items = await induce(llm_with_retry, "t1", "go home", "think...\naction...", "success", "web")
     assert len(items) >= 1
     assert items[0].status == "success"
     assert items[0].domain == "web"
 
 
-def test_induce_fail(llm_with_retry):
-    items = induce(llm_with_retry, "t2", "go home", "think...\naction...", "fail", "web")
+async def test_induce_fail(llm_with_retry):
+    items = await induce(llm_with_retry, "t2", "go home", "think...\naction...", "fail", "web")
     assert len(items) >= 1
     assert items[0].status == "fail"
 
 
-def test_induce_coding_domain(llm_with_retry):
-    items = induce(llm_with_retry, "t3", "fix bug", "think...", "success", "coding")
+async def test_induce_coding_domain(llm_with_retry):
+    items = await induce(llm_with_retry, "t3", "fix bug", "think...", "success", "coding")
     assert len(items) >= 1
     assert items[0].domain == "coding"
 

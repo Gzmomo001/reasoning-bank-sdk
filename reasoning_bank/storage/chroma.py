@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import logging
 import os
 
@@ -16,35 +17,63 @@ _COLLECTION_NAME = "reasoning_bank"
 class ChromaStorage(StorageBackend):
     """Stores memories in a ChromaDB collection.
 
-    Connects to a standalone ChromaDB instance via CHROMA_HOST / CHROMA_PORT env vars,
-    or falls back to a local persistent client at ``storage_path``.
+    Connects to a standalone ChromaDB instance via CHROMA_HOST / CHROMA_PORT env vars
+    using the native async HTTP client. Falls back to a local persistent client
+    (sync, wrapped with ``asyncio.to_thread`` for non-blocking operation).
+
+    Use ``ChromaStorage.create()`` to obtain an instance.
     """
 
-    def __init__(self, client, collection) -> None:
+    def __init__(self, collection, *, is_async: bool) -> None:
         """Private constructor. Use ``ChromaStorage.create()`` instead."""
-        self._client = client
         self._collection = collection
+        self._is_async = is_async
 
     @classmethod
     async def create(cls, storage_path: str = "./memories") -> ChromaStorage:
-        """Create a ChromaStorage instance with an async ChromaDB client."""
+        """Create a ChromaStorage instance.
+
+        For remote ChromaDB (CHROMA_HOST + CHROMA_PORT), uses the native
+        ``AsyncHttpClient`` for true async I/O.  For local embedded mode,
+        uses the synchronous ``PersistentClient`` wrapped via
+        ``asyncio.to_thread()`` so the event loop is never blocked.
+        """
         import chromadb  # noqa: PLC0415
 
         host = os.environ.get("CHROMA_HOST")
         port = os.environ.get("CHROMA_PORT")
-        if host and port:
-            logger.info("Connecting to ChromaDB at %s:%s", host, port)
-            client = await chromadb.AsyncHttpClient(host=host, port=int(port))
-        else:
-            logger.info("Using local ChromaDB at %s", storage_path)
-            settings = chromadb.Settings(persist_directory=storage_path, is_persistent=True)
-            client = await chromadb.AsyncClient.create(settings=settings)
 
-        collection = await client.get_or_create_collection(
+        if host and port:
+            logger.info("Connecting to ChromaDB at %s:%s (async)", host, port)
+            client = await chromadb.AsyncHttpClient(host=host, port=int(port))
+            collection = await client.get_or_create_collection(
+                name=_COLLECTION_NAME,
+                metadata={"hnsw:space": "cosine"},
+            )
+            return cls(collection=collection, is_async=True)
+
+        logger.info("Using local ChromaDB at %s (sync+to_thread)", storage_path)
+        client = chromadb.PersistentClient(path=storage_path)
+        collection = await asyncio.to_thread(
+            client.get_or_create_collection,
             name=_COLLECTION_NAME,
             metadata={"hnsw:space": "cosine"},
         )
-        return cls(client=client, collection=collection)
+        return cls(collection=collection, is_async=False)
+
+    # ------------------------------------------------------------------
+    # Internal helpers
+    # ------------------------------------------------------------------
+
+    async def _call(self, fn, *args, **kwargs):
+        """Dispatch to await (async) or asyncio.to_thread (sync)."""
+        if self._is_async:
+            return await fn(*args, **kwargs)
+        return await asyncio.to_thread(fn, *args, **kwargs)
+
+    # ------------------------------------------------------------------
+    # StorageBackend interface
+    # ------------------------------------------------------------------
 
     async def add(self, item: MemoryItem, embedding: list[float] | None = None) -> None:
         doc = item.to_prompt_text()
@@ -63,7 +92,7 @@ class ChromaStorage(StorageBackend):
         }
         if embedding is not None:
             kwargs["embeddings"] = [embedding]
-        await self._collection.upsert(**kwargs)
+        await self._call(self._collection.upsert, **kwargs)
 
     async def add_batch(self, items: list[MemoryItem], embeddings: list[list[float]] | None = None) -> None:
         if not items:
@@ -85,13 +114,14 @@ class ChromaStorage(StorageBackend):
         kwargs: dict = {"ids": ids, "documents": docs, "metadatas": metas}
         if embeddings is not None:
             kwargs["embeddings"] = embeddings
-        await self._collection.upsert(**kwargs)
+        await self._call(self._collection.upsert, **kwargs)
 
     async def retrieve(self, query_embedding: list[float], top_k: int) -> list[MemoryItem]:
-        cnt = await self._collection.count()
+        cnt = await self._call(self._collection.count)
         if cnt == 0:
             return []
-        results = await self._collection.query(
+        results = await self._call(
+            self._collection.query,
             query_embeddings=[query_embedding],
             n_results=min(top_k, cnt),
             include=["metadatas", "distances"],
@@ -106,17 +136,17 @@ class ChromaStorage(StorageBackend):
 
     async def delete(self, item_id: str) -> None:
         """Delete a single memory item by its ID."""
-        await self._collection.delete(ids=[item_id])
+        await self._call(self._collection.delete, ids=[item_id])
 
     async def list_all(self) -> list[MemoryItem]:
-        results = await self._collection.get(include=["metadatas"])
+        results = await self._call(self._collection.get, include=["metadatas"])
         if not results or not results.get("metadatas"):
             return []
         ids = results.get("ids", [])
         return [self._meta_to_item(m, ids[i] if i < len(ids) else "") for i, m in enumerate(results["metadatas"])]
 
     async def count(self) -> int:
-        return await self._collection.count()
+        return await self._call(self._collection.count)
 
     @staticmethod
     def _meta_to_item(meta: dict, item_id: str = "") -> MemoryItem:

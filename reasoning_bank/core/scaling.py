@@ -14,7 +14,7 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
-def induce_scaling(
+async def induce_scaling(
     llm: LLMClient,
     query: str,
     trajectories: list[dict],
@@ -41,7 +41,7 @@ def induce_scaling(
 
     user_msg = "\n".join(parts)
 
-    raw = llm.chat(
+    raw = await llm.chat(
         messages=[{"role": "user", "content": user_msg}],
         system=system_prompt,
     )
