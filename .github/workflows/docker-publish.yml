@@ -26,9 +26,9 @@ jobs:
       matrix:
         include:
           - dockerfile: docker/Dockerfile.api
-            image: ghcr.io/${{ github.repository_owner }}/reasoning-bank-sdk-api
+            image_key: api
           - dockerfile: docker/Dockerfile.mcp
-            image: ghcr.io/${{ github.repository_owner }}/reasoning-bank-sdk-mcp
+            image_key: mcp
 
     permissions:
       contents: read
@@ -37,6 +37,13 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+
+      - name: Prepare lowercase image name
+        id: image
+        run: |
+          OWNER=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
+          echo "api=ghcr.io/${OWNER}/reasoning-bank-sdk-api" >> "$GITHUB_OUTPUT"
+          echo "mcp=ghcr.io/${OWNER}/reasoning-bank-sdk-mcp" >> "$GITHUB_OUTPUT"
 
       - name: Log in to Container Registry
         uses: docker/login-action@v3
@@ -59,7 +66,7 @@ jobs:
           file: ${{ matrix.dockerfile }}
           push: true
           tags: |
-            ${{ matrix.image }}:latest
-            ${{ matrix.image }}:${{ steps.sha.outputs.short }}
+            ${{ steps.image.outputs[matrix.image_key] }}:latest
+            ${{ steps.image.outputs[matrix.image_key] }}:${{ steps.sha.outputs.short }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
