@@ -31,50 +31,54 @@ Requires Python >= 3.12.
 ### Python SDK
 
 ```python
+import asyncio
 from reasoning_bank import MemoryBank
 from reasoning_bank.llm.openai_client import OpenAIClient
 
-bank = MemoryBank(
-    storage="chroma",
-    storage_path="./memories",
-    embedding_provider="gemini",
-    embedding_model="gemini-embedding-001",
-    llm_client=OpenAIClient(api_key="sk-..."),
-)
+async def main():
+    bank = await MemoryBank.create(
+        storage="chroma",
+        storage_path="./memories",
+        embedding_provider="gemini",
+        embedding_model="gemini-embedding-001",
+        llm_client=OpenAIClient(api_key="sk-..."),
+    )
 
-# Retrieve relevant memories
-memories = bank.retrieve(query="how to fix login bug", top_k=3)
+    # Retrieve relevant memories
+    memories = await bank.retrieve(query="how to fix login bug", top_k=3)
 
-# Induce memories from a successful trajectory
-items = bank.induce(
-    query="Navigate to shopping cart",
-    trajectory="...",
-    status="success",
-    domain="web",
-)
+    # Induce memories from a successful trajectory
+    items = await bank.induce(
+        query="Navigate to shopping cart",
+        trajectory="...",
+        status="success",
+        domain="web",
+    )
 
-# Induce memories by comparing multiple trajectories
-items = bank.induce_scaling(
-    query="Add item to wishlist",
-    trajectories=[
-        {"trajectory": "...", "status": "success"},
-        {"trajectory": "...", "status": "fail"},
-    ],
-    domain="web",
-)
+    # Induce memories by comparing multiple trajectories
+    items = await bank.induce_scaling(
+        query="Add item to wishlist",
+        trajectories=[
+            {"trajectory": "...", "status": "success"},
+            {"trajectory": "...", "status": "fail"},
+        ],
+        domain="web",
+    )
 
-# Directly add a memory item (no LLM needed)
-item = bank.add(
-    query="Search for products",
-    memory_items=["Always use the search bar in the top navigation..."],
-    status="success",
-    domain="web",
-)
+    # Directly add a memory item (no LLM needed)
+    item = await bank.add(
+        query="Search for products",
+        memory_items=["Always use the search bar in the top navigation..."],
+        status="success",
+        domain="web",
+    )
 
-# List, count, or delete
-all_memories = bank.list()
-total = bank.count()
-bank.delete(item_id=item.id)
+    # List, count, or delete
+    all_memories = await bank.list()
+    total = await bank.count()
+    await bank.delete(item_id=item.id)
+
+asyncio.run(main())
 ```
 
 ### REST API
@@ -438,6 +442,7 @@ cp .env.example .env
 | `LLM_PROVIDER` | `openai` | LLM provider (`openai`, `anthropic`, `vertexai`, `google_ai`) |
 | `LLM_MODEL` | *(empty)* | LLM model name (e.g. `gpt-4o`, `gemini-2.0-flash`) |
 | `LLM_API_BASE_URL` | *(empty)* | Custom base URL for OpenAI-compatible APIs |
+| `LLM_RPM` | `0` | Max LLM requests per minute (0 = unlimited) |
 
 ### Embedding
 
@@ -445,6 +450,8 @@ cp .env.example .env
 |----------|---------|-------------|
 | `EMBEDDING_PROVIDER` | `gemini` | Embedding provider (`gemini` or `openai`) |
 | `EMBEDDING_MODEL` | *(provider default)* | Embedding model name (e.g. `gemini-embedding-001`) |
+| `EMBEDDING_API_KEY` | *(falls back to `LLM_API_KEY`)* | Embedding API key. Required for Gemini with Google AI Studio; not needed for Vertex AI (uses ADC) |
+| `EMBEDDING_RPM` | `0` | Max embedding requests per minute (0 = unlimited) |
 
 ### Storage
 
@@ -462,6 +469,13 @@ cp .env.example .env
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `GOOGLE_GENAI_USE_VERTEXAI` | `False` | Set to `True` if using Vertex AI instead of Google AI Studio |
+
+### Logging
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `LOG_LEVEL` | `INFO` | Logging level (`DEBUG`, `INFO`, `WARNING`, `ERROR`) |
+| `LOG_DIR` | *(empty)* | Directory for log files (used by API and MCP services) |
 
 ## ChromaDB Storage Schema
 
@@ -538,6 +552,8 @@ reasoning_bank/
     induction.py     # Single-trajectory induction
     scaling.py       # Multi-trajectory scaling induction
     embedding.py     # Embedding providers (Gemini, OpenAI, Custom)
+    parsing.py       # LLM output parsing (strip thinking chains, split items)
+    rate_limiter.py  # Token-bucket rate limiter for API calls
     prompts.py       # Domain-adapted prompt templates
   llm/
     base.py          # LLMClient abstract base
@@ -548,6 +564,7 @@ reasoning_bank/
     base.py          # StorageBackend abstract base
     chroma.py        # ChromaDB storage backend
     jsonl.py         # JSONL file-based storage backend
+  logging_config.py  # Shared logging configuration for services
 reasoning_bank_api/
   app.py             # FastAPI application factory
   routes.py          # HTTP route handlers

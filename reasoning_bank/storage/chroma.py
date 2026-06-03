@@ -33,10 +33,10 @@ class ChromaStorage(StorageBackend):
     async def create(cls, storage_path: str = "./memories") -> ChromaStorage:
         """Create a ChromaStorage instance.
 
-        For remote ChromaDB (CHROMA_HOST + CHROMA_PORT), uses the native
-        ``AsyncHttpClient`` for true async I/O.  For local embedded mode,
-        uses the synchronous ``PersistentClient`` wrapped via
-        ``asyncio.to_thread()`` so the event loop is never blocked.
+        For remote ChromaDB (CHROMA_HOST + CHROMA_PORT), uses the synchronous
+        ``HttpClient`` wrapped with ``asyncio.to_thread`` to avoid a
+        ``StopIteration`` bug in chromadb's ``AsyncHttpClient`` on Python 3.12+.
+        For local embedded mode, uses ``PersistentClient`` similarly wrapped.
         """
         import chromadb  # noqa: PLC0415
 
@@ -44,13 +44,21 @@ class ChromaStorage(StorageBackend):
         port = os.environ.get("CHROMA_PORT")
 
         if host and port:
-            logger.info("Connecting to ChromaDB at %s:%s (async)", host, port)
-            client = await chromadb.AsyncHttpClient(host=host, port=int(port))
-            collection = await client.get_or_create_collection(
-                name=_COLLECTION_NAME,
-                metadata={"hnsw:space": "cosine"},
-            )
-            return cls(collection=collection, is_async=True)
+            logger.info("Connecting to ChromaDB at %s:%s (sync+to_thread)", host, port)
+            client = chromadb.HttpClient(host=host, port=int(port))
+            try:
+                collection = await asyncio.to_thread(
+                    client.get_or_create_collection,
+                    name=_COLLECTION_NAME,
+                    metadata={"hnsw:space": "cosine"},
+                )
+            except Exception as exc:
+                msg = (
+                    f"Failed to connect to ChromaDB at {host}:{port}. "
+                    f"Ensure the ChromaDB server is running and reachable."
+                )
+                raise RuntimeError(msg) from exc
+            return cls(collection=collection, is_async=False)
 
         logger.info("Using local ChromaDB at %s (sync+to_thread)", storage_path)
         client = chromadb.PersistentClient(path=storage_path)
