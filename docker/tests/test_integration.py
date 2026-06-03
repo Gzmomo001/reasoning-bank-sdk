@@ -20,7 +20,6 @@ Environment variables:
 from __future__ import annotations
 
 import json
-import os
 
 import httpx
 import pytest
@@ -60,9 +59,24 @@ def test_api_is_responsive(compose_project, api_url):
 
 
 @pytest.mark.integration
-def test_mcp_sse_endpoint_exists(compose_project, mcp_url):
-    with httpx.stream("GET", f"{mcp_url}/sse", timeout=10) as resp:
-        assert resp.status_code == 200
+def test_mcp_streamable_http_endpoint_exists(compose_project, mcp_url):
+    """Verify the MCP Streamable HTTP endpoint accepts POST requests."""
+    resp = httpx.post(
+        f"{mcp_url}/mcp",
+        json={
+            "jsonrpc": "2.0",
+            "id": 0,
+            "method": "initialize",
+            "params": {
+                "protocolVersion": "2025-03-26",
+                "capabilities": {},
+                "clientInfo": {"name": "test", "version": "0.1.0"},
+            },
+        },
+        headers={"Content-Type": "application/json", "Accept": "application/json, text/event-stream"},
+        timeout=10,
+    )
+    assert resp.status_code == 200
 
 
 # ---------------------------------------------------------------------------
@@ -148,37 +162,32 @@ def test_api_list_returns_added_items(compose_project, api_url):
 
 
 # ---------------------------------------------------------------------------
-# MCP SSE endpoint tests
+# MCP Streamable HTTP endpoint tests
 # ---------------------------------------------------------------------------
 
 
-def _mcp_sse_request(mcp_url: str, payload: dict, timeout: int = 30) -> dict:
-    """Send a JSON-RPC request via MCP SSE transport and return the response."""
-    with httpx.Client(timeout=timeout) as client:
-        # Keep SSE connection alive while posting
-        sse_stream = client.stream("GET", f"{mcp_url}/sse")
-        sse_resp = sse_stream.__enter__()
-        try:
-            endpoint = None
-            for line in sse_resp.iter_lines():
-                if line.startswith("data:"):
-                    endpoint = line.replace("data:", "").strip()
-                    break
-            if endpoint is None:
-                return {"error": "no endpoint received"}
-            resp = client.post(f"{mcp_url}{endpoint}", json=payload)
-            if resp.status_code == 200:
-                for line in resp.text.strip().split("\n"):
-                    if line.startswith("data:"):
-                        return json.loads(line.replace("data:", "").strip())
-            return {"error": f"status {resp.status_code}: {resp.text[:200]}"}
-        finally:
-            sse_stream.__exit__(None, None, None)
+def _mcp_request(mcp_url: str, payload: dict, timeout: int = 30) -> dict:
+    """Send a JSON-RPC request via MCP Streamable HTTP transport and return the response."""
+    resp = httpx.post(
+        f"{mcp_url}/mcp",
+        json=payload,
+        headers={"Content-Type": "application/json", "Accept": "application/json, text/event-stream"},
+        timeout=timeout,
+    )
+    if resp.status_code != 200:
+        return {"error": f"status {resp.status_code}: {resp.text[:200]}"}
+    content_type = resp.headers.get("content-type", "")
+    if "text/event-stream" in content_type:
+        for line in resp.text.strip().split("\n"):
+            if line.startswith("data:"):
+                return json.loads(line.replace("data:", "", 1).strip())
+        return {"error": "no data in SSE response"}
+    return resp.json()
 
 
 @pytest.mark.integration
 def test_mcp_count_tool(compose_project, mcp_url):
-    result = _mcp_sse_request(
+    result = _mcp_request(
         mcp_url,
         {
             "jsonrpc": "2.0",
@@ -192,7 +201,7 @@ def test_mcp_count_tool(compose_project, mcp_url):
 
 @pytest.mark.integration
 def test_mcp_list_tool(compose_project, mcp_url):
-    result = _mcp_sse_request(
+    result = _mcp_request(
         mcp_url,
         {
             "jsonrpc": "2.0",
@@ -214,7 +223,7 @@ def test_data_shared_between_api_and_mcp(compose_project, api_url, mcp_url):
     """Add via API, verify count via MCP."""
     _api_add(api_url, "cross-service test", ["shared data"])
 
-    result = _mcp_sse_request(
+    result = _mcp_request(
         mcp_url,
         {
             "jsonrpc": "2.0",

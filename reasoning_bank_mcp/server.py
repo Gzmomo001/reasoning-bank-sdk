@@ -157,14 +157,14 @@ def stats() -> str:
 
 def main():
     parser = argparse.ArgumentParser(description="ReasoningBank MCP Server")
-    parser.add_argument("--transport", choices=["stdio", "sse"], default="stdio")
+    parser.add_argument("--transport", choices=["stdio", "sse", "streamable-http"], default="stdio")
     parser.add_argument("--port", type=int, default=9000)
     args = parser.parse_args()
 
     setup_logging("mcp")
 
-    if args.transport == "sse":
-        mcp.run(transport="sse", port=args.port)
+    if args.transport in ("sse", "streamable-http"):
+        mcp.run(transport=args.transport, port=args.port)
     else:
         mcp.run(transport="stdio")
 

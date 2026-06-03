@@ -24,7 +24,7 @@ def test_compose_is_valid_yaml():
 
 def test_required_services_exist():
     data = _load_compose()
-    assert set(data["services"].keys()) == {"chromadb", "api", "mcp"}
+    assert set(data["services"].keys()) == {"chromadb", "api", "mcp", "inspector"}
 
 
 def test_chromadb_port_mapping():
@@ -42,6 +42,12 @@ def test_mcp_port_mapping():
     assert "9000:9000" in svc["ports"]
 
 
+def test_inspector_port_mapping():
+    ports = _load_compose()["services"]["inspector"]["ports"]
+    assert "6274:6274" in ports
+    assert "6277:6277" in ports
+
+
 def test_network_definition():
     data = _load_compose()
     assert "reasoning-bank" in data["networks"]
@@ -50,7 +56,7 @@ def test_network_definition():
 
 def test_all_services_use_custom_network():
     data = _load_compose()
-    for name in ("chromadb", "api", "mcp"):
+    for name in ("chromadb", "api", "mcp", "inspector"):
         svc = data["services"][name]
         assert "networks" in svc
         assert "reasoning-bank" in svc["networks"]

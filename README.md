@@ -260,8 +260,8 @@ Run multi-trajectory contrast induction — compare trajectories and extract con
 # Via entry point (stdio transport)
 reasoning-bank-mcp
 
-# Or with SSE transport
-reasoning-bank-mcp --transport sse --port 9000
+# Or with Streamable HTTP transport
+reasoning-bank-mcp --transport streamable-http --port 9000
 ```
 
 #### MCP Tools
@@ -322,13 +322,13 @@ item_id: string — Memory item ID to delete
 
 Add to your project's `.mcp.json` or global `~/.claude/mcp.json`:
 
-**SSE transport (connect to Docker or remote server):**
+**Streamable HTTP transport (connect to Docker or remote server):**
 ```json
 {
   "mcpServers": {
     "reasoning-bank": {
-      "type": "sse",
-      "url": "http://localhost:9000/sse"
+      "type": "streamable-http",
+      "url": "http://localhost:9000/mcp"
     }
   }
 }
@@ -360,13 +360,13 @@ Add to your project's `.mcp.json` or global `~/.claude/mcp.json`:
 
 Add to your project's `.opencode.json` or global `~/.config/opencode/opencode.json`:
 
-**SSE transport:**
+**Streamable HTTP transport:**
 ```json
 {
   "mcp": {
     "reasoning-bank": {
-      "type": "sse",
-      "url": "http://localhost:9000/sse"
+      "type": "streamable-http",
+      "url": "http://localhost:9000/mcp"
     }
   }
 }
@@ -400,13 +400,32 @@ Add to your project's `.opencode.json` or global `~/.config/opencode/opencode.js
 # Copy .env and fill in API keys
 cp .env.example .env
 
-# Start all services (ChromaDB + API + MCP)
+# Start all services (ChromaDB + API + MCP + Inspector)
 cd docker && docker compose up
 ```
 
 - **ChromaDB**: `http://localhost:8001`
 - **API**: `http://localhost:8000`
-- **MCP (SSE)**: `http://localhost:9000`
+- **MCP (Streamable HTTP)**: `http://localhost:9000`
+- **MCP Inspector**: `http://localhost:6274`
+
+### MCP Inspector
+
+A web UI for interactively testing MCP tools and resources.
+
+> **Warning:** Inspector runs with `DANGEROUSLY_OMIT_AUTH=true` — no authentication. Only use in local development. Do not expose port 6274/6277 to the public internet.
+
+**Docker (recommended):** `docker compose up` and open `http://localhost:6274`. Select Streamable HTTP transport, enter `http://mcp:9000/mcp`, and click Connect.
+
+**Local:**
+
+```bash
+# Start MCP server first
+uv run reasoning-bank-mcp --transport streamable-http --port 9000
+
+# Then launch inspector
+bash scripts/inspector.sh
+```
 
 ## Configuration
 
@@ -497,17 +516,21 @@ flowchart LR
             H1[":8001"]
             H2[":8000"]
             H3[":9000"]
+            H4[":6274/6277"]
         end
         CB["ChromaDB<br/>:8000"]
         API["API<br/>:8000"]
         MCP["MCP<br/>:9000"]
+        INS["Inspector<br/>:6274/6277"]
     end
 
     H1 -- "port map" --> CB
     H2 -- "port map" --> API
     H3 -- "port map" --> MCP
+    H4 -- "port map" --> INS
     API -->|"<i>chromadb:8000</i>"| CB
     MCP -->|"<i>chromadb:8000</i>"| CB
+    INS -->|"<i>mcp:9000/mcp</i>"| MCP
 ```
 
 ## Architecture

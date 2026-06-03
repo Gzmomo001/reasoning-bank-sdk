@@ -114,7 +114,7 @@ class TestDockerfileMCP:
 
     def test_runs_mcp_server(self, content):
         assert "reasoning_bank_mcp.server" in content
-        assert "sse" in content
+        assert "streamable-http" in content
         assert "9000" in content
 
 

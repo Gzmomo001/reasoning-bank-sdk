@@ -45,4 +45,4 @@ ENV PYTHONUNBUFFERED=1
 EXPOSE 9000
 
 ENTRYPOINT ["docker-entrypoint.sh"]
-CMD ["/app/.venv/bin/python", "-m", "reasoning_bank_mcp.server", "--transport", "sse", "--port", "9000"]
+CMD ["/app/.venv/bin/python", "-m", "reasoning_bank_mcp.server", "--transport", "streamable-http", "--port", "9000"]

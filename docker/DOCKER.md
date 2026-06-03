@@ -6,22 +6,26 @@
                     ┌──────────────────────────────────────────────────┐
                     │            reasoning-bank (bridge 网络)            │
                     │                                                  │
-  宿主机:8000  ←──  │  api 服务 (FastAPI)     MCP 服务 (SSE)  ←── 宿主机:9000
+  宿主机:8000  ←──  │  api 服务 (FastAPI)     MCP 服务 (Streamable HTTP) ←── 宿主机:9000
                     │      │                        │                   │
                     │      └──────────┬─────────────┘                   │
                     │                 ↓                                  │
                     │         chromadb 服务                              │
                     │         宿主机:8001 → 内部:8000                    │
+                    │                                                  │
+                    │  inspector 服务         ──→ 宿主机:6274/6277       │
+                    │         │ 連接 MCP (mcp:9000/mcp)                  │
                     └──────────────────────────────────────────────────┘
 ```
 
-三个服务协同工作：
+四个服务协同工作：
 
 | 服务 | 端口 | 说明 |
 |------|------|------|
 | **chromadb** | `8001` | 向量数据库，存储记忆的嵌入向量 |
 | **api** | `8000` | REST API，提供记忆的 CRUD 和归纳操作 |
-| **mcp** | `9000` | MCP 服务器，通过 SSE 暴露工具供 Agent 调用 |
+| **mcp** | `9000` | MCP 服务器，通过 Streamable HTTP 暴露工具供 Agent 调用 |
+| **inspector** | `6274` / `6277` | MCP Inspector Web UI，可视化测试 MCP 接口 |
 
 ## 快速启动
 
@@ -79,8 +83,15 @@ curl http://localhost:8001/api/v1/heartbeat
 # API 文档
 open http://localhost:8000/docs
 
-# MCP SSE 端点
-curl http://localhost:9000/sse
+# MCP Streamable HTTP 端点
+curl -X POST http://localhost:9000/mcp \
+  -H "Content-Type: application/json" \
+  -H "Accept: application/json, text/event-stream" \
+  -d '{"jsonrpc":"2.0","id":0,"method":"initialize","params":{"protocolVersion":"2025-03-26","capabilities":{},"clientInfo":{"name":"test","version":"0.1.0"}}}'
+
+# MCP Inspector（浏览器打开）
+open http://localhost:6274
+# 在 UI 中选择 Streamable HTTP transport，输入 http://mcp:9000/mcp，点击 Connect
 ```
 
 ### 4. 查看日志
@@ -93,6 +104,7 @@ docker compose logs -f
 docker compose logs -f api
 docker compose logs -f mcp
 docker compose logs -f chromadb
+docker compose logs -f inspector
 
 # 宿主机日志文件
 ls logs/api/    # api.log
@@ -168,7 +180,7 @@ curl -X POST http://localhost:8000/v1/memory/inductions \
 
 ## MCP 工具
 
-MCP 服务器通过 SSE 传输（端口 9000），暴露以下工具：
+MCP 服务器通过 Streamable HTTP 传输（端口 9000），暴露以下工具：
 
 | 工具名 | 说明 | 需要 LLM |
 |--------|------|----------|
@@ -198,6 +210,14 @@ MCP 服务器通过 SSE 传输（端口 9000），暴露以下工具：
 | `GOOGLE_GENAI_USE_VERTEXAI` | `False` | 是否使用 Vertex AI |
 | `LOG_LEVEL` | `INFO` | 日志级别 |
 | `LOG_DIR` | `/app/logs` | 日志目录（容器内） |
+
+### Inspector 环境变量
+
+| 变量 | 默认值 | 说明 |
+|------|--------|------|
+| `HOST` | `0.0.0.0` | 绑定地址（Docker 内必须设为 `0.0.0.0`） |
+| `MCP_SERVER_URL` | `http://mcp:9000/mcp` | MCP Server Streamable HTTP 端点（Docker 内部 DNS） |
+| `DANGEROUSLY_OMIT_AUTH` | `true` | 禁用认证（仅限本地开发，**切勿暴露到公网**） |
 
 ## 数据持久化
 
@@ -249,7 +269,7 @@ uv run pytest docker/tests/ -m integration -v
 | `test_dockerfile.py` | Dockerfile 最佳实践 + 构建测试 | 静态部分不需要 |
 | `test_integration.py` | 端到端集成测试 | 是 |
 
-**注意：** 集成测试占用端口 8000/8001/9000，运行期间请确保这些端口空闲。`add`/`retrieve` 操作会调用嵌入模型，需要 `LLM_API_KEY`。
+**注意：** 集成测试占用端口 8000/8001/9000/6274/6277，运行期间请确保这些端口空闲。`add`/`retrieve` 操作会调用嵌入模型，需要 `LLM_API_KEY`。
 
 ## 常见问题
 
