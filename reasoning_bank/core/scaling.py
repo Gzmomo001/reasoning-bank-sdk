@@ -6,6 +6,7 @@ import logging
 from typing import TYPE_CHECKING
 
 from reasoning_bank.core.memory_item import MemoryItem
+from reasoning_bank.core.parsing import parse_memory_items
 from reasoning_bank.core.prompts import get_scaling_prompt
 
 if TYPE_CHECKING:
@@ -46,7 +47,7 @@ async def induce_scaling(
         system=system_prompt,
     )
 
-    memory_texts = _parse_memory_items(raw)
+    memory_texts = parse_memory_items(raw)
 
     items = []
     for text in memory_texts:
@@ -62,27 +63,3 @@ async def induce_scaling(
         logger.warning("No memory items extracted from scaling induction for query: %s", query)
 
     return items
-
-
-def _parse_memory_items(raw: str) -> list[str]:
-    """Parse LLM output into individual memory item texts."""
-    parts = []
-    current: list[str] = []
-    found_header = False
-
-    for line in raw.split("\n"):
-        if line.strip().startswith("# Memory Item"):
-            found_header = True
-            if current:
-                parts.append("\n".join(current).strip())
-            current = []
-        else:
-            current.append(line)
-
-    if current:
-        parts.append("\n".join(current).strip())
-
-    if found_header:
-        return [p for p in parts if p]
-
-    return [p.strip() for p in raw.split("\n\n") if p.strip()]

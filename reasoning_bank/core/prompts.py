@@ -14,72 +14,59 @@ _DOMAIN_DESCRIPTIONS = {
 }
 
 
-def _make_successful_si(domain: str = "web") -> str:
+def _make_single_si(status: str = "success", domain: str = "web") -> str:
+    """Build a system prompt for single-trajectory induction.
+
+    Args:
+        status: ``"success"`` or ``"fail"``.
+        domain: ``"web"``, ``"coding"``, or ``"general"``.
+    """
     desc = _DOMAIN_DESCRIPTIONS.get(domain, _DOMAIN_DESCRIPTIONS["general"])
+
+    if status == "success":
+        trajectory_desc = "how an agent **successfully accomplished the task**"
+        trajectory_noun = "successful trajectory"
+        procedure_adj = "concrete, actionable procedures"
+        thinking_hint = "Analyze why the trajectory was successful and what insights can be extracted..."
+        content_hint = "the insights learned to successfully accomplishing similar tasks in the future"
+    else:
+        trajectory_desc = "how an agent attempted to resolve the task but **failed**"
+        trajectory_noun = "failed trajectory"
+        procedure_adj = "concrete, actionable recovery procedures"
+        thinking_hint = "Reflect on why the trajectory failed and what lessons can be learned..."
+        content_hint = (
+            "the insights learned to avoid such failures and successfully accomplishing similar tasks in the future"
+        )
+
     return f"""\
 You are an expert in {desc}. You will be given a user query, the corresponding
-trajectory that represents **how an agent successfully accomplished the task**.
+trajectory that represents **{trajectory_desc}**.
 
 ## Guidelines
 You need to extract and summarize useful insights in the format of memory items
-based on the agent's successful trajectory.
+based on the agent's {trajectory_noun}.
 The goal of summarized memory items is to be helpful and generalizable for
 future similar tasks.
 
 ## Important notes
-  - You must first think why the trajectory is successful, and then summarize
-    the insights.
   - You can extract *at most 3* memory items from the trajectory.
   - You must not repeat similar or overlapping items.
-  - Prefer concrete, actionable procedures over abstract principles.
+  - Prefer {procedure_adj} over abstract principles.
     Do not embed specific product names, queries, or literal string contents
     from the task.
 
 ## Output Format
-Your output must strictly follow the Markdown format shown below:
+First, reason inside <thinking> tags. Then output ONLY the final memory items
+in the Markdown format shown below.
 
-```
-# Memory Item i
+<thinking>
+{thinking_hint}
+</thinking>
+
+# Memory Item 1
 ## Title <the title of the memory item>
 ## Description <one sentence summary describing when or when NOT to use the memory item>
-## Content <1-3 sentences describing the insights learned to successfully
-  accomplishing similar tasks in the future>
-```
-"""
-
-
-def _make_failed_si(domain: str = "web") -> str:
-    desc = _DOMAIN_DESCRIPTIONS.get(domain, _DOMAIN_DESCRIPTIONS["general"])
-    return f"""\
-You are an expert in {desc}. You will be given a user query, the corresponding
-trajectory that represents **how an agent attempted to resolve the task but failed**.
-
-## Guidelines
-You need to extract and summarize useful insights in the format of memory items
-based on the agent's failed trajectory.
-The goal of summarized memory items is to be helpful and generalizable for
-future similar tasks.
-
-## Important notes
-  - You must first reflect and think why the trajectory failed, and then
-    summarize what lessons you have learned or strategies to prevent the failure
-    in the future.
-  - You can extract *at most 3* memory items from the trajectory.
-  - You must not repeat similar or overlapping items.
-  - Prefer concrete, actionable recovery procedures over abstract principles.
-    Do not embed specific product names, queries, or literal string contents
-    from the task.
-
-## Output Format
-Your output must strictly follow the Markdown format shown below:
-
-```
-# Memory Item i
-## Title <the title of the memory item>
-## Description <one sentence summary describing when or when NOT to use the memory item>
-## Content <1-3 sentences describing the insights learned to avoid such failures
-  and successfully accomplishing similar tasks in the future>
-```
+## Content <1-3 sentences describing {content_hint}>
 """
 
 
@@ -100,7 +87,6 @@ Use **self-contrast reasoning**:
   - Prefer strategies that generalize beyond specific pages or exact wording.
 
 ## Important notes
-  - Think first: Why did some trajectories succeed while others failed?
   - You can extract *at most 5* memory items from all trajectories combined.
   - Do not repeat similar or overlapping items.
   - Do not mention specific websites, queries, or string contents — focus on
@@ -109,15 +95,19 @@ Use **self-contrast reasoning**:
     insights.
 
 ## Output Format
-Your output must strictly follow the Markdown format shown below:
+First, reason inside <thinking> tags. Then output ONLY the final memory items
+in the Markdown format shown below.
 
-```
-# Memory Item i
+<thinking>
+Compare the trajectories. Why did some succeed while others failed? What
+patterns emerge?
+</thinking>
+
+# Memory Item 1
 ## Title <the title of the memory item>
 ## Description <one sentence summary describing when or when NOT to use the memory item>
 ## Content <1-5 sentences describing the insights learned to avoid such failures
   and successfully accomplishing similar tasks in the future>
-```
 """
 
 
@@ -125,16 +115,14 @@ Your output must strictly follow the Markdown format shown below:
 # Backward-compatible aliases (original WebArena prompts)
 # ---------------------------------------------------------------------------
 
-SUCCESSFUL_SI = _make_successful_si("web")
-FAILED_SI = _make_failed_si("web")
+SUCCESSFUL_SI = _make_single_si("success", "web")
+FAILED_SI = _make_single_si("fail", "web")
 PARALLEL_SI = _make_parallel_si("web")
 
 
 def get_system_prompt(status: str, domain: str = "web") -> str:
     """Return the appropriate system prompt for single-trajectory induction."""
-    if status == "success":
-        return _make_successful_si(domain)
-    return _make_failed_si(domain)
+    return _make_single_si(status, domain)
 
 
 def get_scaling_prompt(domain: str = "web") -> str:
