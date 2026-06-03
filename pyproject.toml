@@ -15,6 +15,7 @@ dependencies = [
     "uvicorn>=0.34.0",
     "mcp>=1.0.0",
     "httpx>=0.28.1",
+    "aiofiles>=24.1.0",
 ]
 
 [project.optional-dependencies]
@@ -47,6 +48,7 @@ packages = ["reasoning_bank", "reasoning_bank_api", "reasoning_bank_mcp"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+asyncio_mode = "auto"
 
 [tool.ruff]
 target-version = "py312"
@@ -90,6 +92,7 @@ quote-style = "double"
 [dependency-groups]
 dev = [
     "pytest>=9.0.3",
+    "pytest-asyncio>=0.24.0",
     "pyyaml>=6.0.3",
     "ruff>=0.15.15",
 ]

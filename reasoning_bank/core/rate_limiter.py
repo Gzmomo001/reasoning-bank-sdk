@@ -2,9 +2,8 @@
 
 from __future__ import annotations
 
+import asyncio
 import os
-import threading
-import time
 
 
 class RateLimiter:
@@ -16,30 +15,37 @@ class RateLimiter:
     Usage::
 
         limiter = RateLimiter(rpm=15)
-        limiter.wait()  # blocks until a token is available
+        await limiter.wait()  # blocks until a token is available
     """
 
     def __init__(self, rpm: float) -> None:
         self._rpm = rpm
         self._min_interval = 60.0 / rpm if rpm > 0 else 0.0
-        self._lock = threading.Lock()
+        self._lock = asyncio.Lock()
         self._last_call: float | None = None
 
-    def wait(self) -> float:
+    async def wait(self) -> float:
         """Block until a request can be made. Returns seconds waited."""
         if self._rpm <= 0:
             return 0.0
-        with self._lock:
-            now = time.monotonic()
+        async with self._lock:
+            now = _monotonic()
             if self._last_call is not None:
                 elapsed = now - self._last_call
                 if elapsed < self._min_interval:
                     sleep_time = self._min_interval - elapsed
-                    time.sleep(sleep_time)
-                    self._last_call = time.monotonic()
+                    await asyncio.sleep(sleep_time)
+                    self._last_call = _monotonic()
                     return sleep_time
             self._last_call = now
             return 0.0
+
+
+def _monotonic() -> float:
+    """Return a monotonic clock value. Wrapped for testability."""
+    import time  # noqa: PLC0415
+
+    return time.monotonic()
 
 
 def get_llm_rpm() -> float:

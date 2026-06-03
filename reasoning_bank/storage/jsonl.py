@@ -30,21 +30,25 @@ class JsonlStorage(StorageBackend):
             if not p.exists():
                 p.touch()
 
-    def add(self, item: MemoryItem) -> None:
-        with self._data_path.open("a") as f:
-            f.write(json.dumps(item.to_dict()) + "\n")
+    async def add(self, item: MemoryItem) -> None:
+        import aiofiles  # noqa: PLC0415
 
-    def add_batch(self, items: list[MemoryItem]) -> None:
-        with self._data_path.open("a") as f:
-            f.writelines(json.dumps(item.to_dict()) + "\n" for item in items)
+        async with aiofiles.open(self._data_path, "a") as f:
+            await f.write(json.dumps(item.to_dict()) + "\n")
 
-    def retrieve(self, query_embedding: list[float], top_k: int) -> list[MemoryItem]:
-        all_items = self.list_all()
+    async def add_batch(self, items: list[MemoryItem]) -> None:
+        import aiofiles  # noqa: PLC0415
+
+        async with aiofiles.open(self._data_path, "a") as f:
+            await f.writelines(json.dumps(item.to_dict()) + "\n" for item in items)
+
+    async def retrieve(self, query_embedding: list[float], top_k: int) -> list[MemoryItem]:
+        all_items = await self.list_all()
         if not all_items:
             return []
 
         # Load embeddings
-        embeddings_map = self._load_embeddings()
+        embeddings_map = await self._load_embeddings()
         scored: list[tuple[float, MemoryItem]] = []
         for item in all_items:
             emb = embeddings_map.get(item.id)
@@ -56,18 +60,22 @@ class JsonlStorage(StorageBackend):
         scored.sort(key=lambda x: x[0], reverse=True)
         return [item for _, item in scored[:top_k]]
 
-    def delete(self, item_id: str) -> None:
-        items = self.list_all()
-        remaining = [item for item in items if item.id != item_id]
-        with self._data_path.open("w") as f:
-            f.writelines(json.dumps(item.to_dict()) + "\n" for item in remaining)
+    async def delete(self, item_id: str) -> None:
+        import aiofiles  # noqa: PLC0415
 
-    def list_all(self) -> list[MemoryItem]:
+        items = await self.list_all()
+        remaining = [item for item in items if item.id != item_id]
+        async with aiofiles.open(self._data_path, "w") as f:
+            await f.writelines(json.dumps(item.to_dict()) + "\n" for item in remaining)
+
+    async def list_all(self) -> list[MemoryItem]:
+        import aiofiles  # noqa: PLC0415
+
         items: list[MemoryItem] = []
         if not self._data_path.exists():
             return items
-        with self._data_path.open() as f:
-            for raw_line in f:
+        async with aiofiles.open(self._data_path) as f:
+            async for raw_line in f:
                 line = raw_line.strip()
                 if not line:
                     continue
@@ -77,20 +85,24 @@ class JsonlStorage(StorageBackend):
                     continue
         return items
 
-    def count(self) -> int:
-        return len(self.list_all())
+    async def count(self) -> int:
+        return len(await self.list_all())
 
-    def store_embedding(self, item_id: str, embedding: list[float]) -> None:
+    async def store_embedding(self, item_id: str, embedding: list[float]) -> None:
+        import aiofiles  # noqa: PLC0415
+
         record = {"id": item_id, "embedding": embedding}
-        with self._embed_path.open("a") as f:
-            f.write(json.dumps(record) + "\n")
+        async with aiofiles.open(self._embed_path, "a") as f:
+            await f.write(json.dumps(record) + "\n")
 
-    def _load_embeddings(self) -> dict[str, list[float]]:
+    async def _load_embeddings(self) -> dict[str, list[float]]:
+        import aiofiles  # noqa: PLC0415
+
         result: dict[str, list[float]] = {}
         if not self._embed_path.exists():
             return result
-        with self._embed_path.open() as f:
-            for raw_line in f:
+        async with aiofiles.open(self._embed_path) as f:
+            async for raw_line in f:
                 line = raw_line.strip()
                 if not line:
                     continue

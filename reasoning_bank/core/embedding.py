@@ -8,7 +8,7 @@ from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from collections.abc import Callable
+    from collections.abc import Awaitable, Callable
 
 logger = logging.getLogger(__name__)
 
@@ -17,7 +17,7 @@ class EmbeddingProvider(ABC):
     """All embedding providers must implement this interface."""
 
     @abstractmethod
-    def embed(self, texts: list[str]) -> list[list[float]]: ...
+    async def embed(self, texts: list[str]) -> list[list[float]]: ...
 
     @abstractmethod
     def dimension(self) -> int: ...
@@ -46,10 +46,10 @@ class GeminiEmbedding(EmbeddingProvider):
             return genai.Client(api_key=api_key, http_options=HttpOptions(api_version="v1"))
         return genai.Client(vertexai=True, http_options=HttpOptions(api_version="v1"))
 
-    def embed(self, texts: list[str]) -> list[list[float]]:
+    async def embed(self, texts: list[str]) -> list[list[float]]:
         from google.genai.types import EmbedContentConfig  # noqa: PLC0415
 
-        response = self._client.models.embed_content(
+        response = await self._client.aio.models.embed_content(
             model=self._model,
             contents=texts,
             config=EmbedContentConfig(
@@ -72,22 +72,21 @@ class OpenAIEmbedding(EmbeddingProvider):
         api_key: str | None = None,
         base_url: str | None = None,
     ) -> None:
+        from openai import AsyncOpenAI  # noqa: PLC0415
+
         self._model = model
-        self._api_key = api_key or os.environ.get("LLM_API_KEY", "")
-        self._base_url = base_url or os.environ.get("LLM_API_BASE_URL", "") or None
+        kwargs: dict = {}
+        resolved_key = api_key or os.environ.get("LLM_API_KEY", "")
+        resolved_url = base_url or os.environ.get("LLM_API_BASE_URL", "") or None
+        if resolved_key:
+            kwargs["api_key"] = resolved_key
+        if resolved_url:
+            kwargs["base_url"] = resolved_url
+        self._client = AsyncOpenAI(**kwargs)
         self._dim = 1536
 
-    def embed(self, texts: list[str]) -> list[list[float]]:
-        from openai import OpenAI  # noqa: PLC0415
-
-        kwargs: dict = {}
-        if self._api_key:
-            kwargs["api_key"] = self._api_key
-        if self._base_url:
-            kwargs["base_url"] = self._base_url
-
-        client = OpenAI(**kwargs)
-        response = client.embeddings.create(input=texts, model=self._model)
+    async def embed(self, texts: list[str]) -> list[list[float]]:
+        response = await self._client.embeddings.create(input=texts, model=self._model)
         return [item.embedding for item in response.data]
 
     def dimension(self) -> int:
@@ -95,14 +94,14 @@ class OpenAIEmbedding(EmbeddingProvider):
 
 
 class CustomEmbedding(EmbeddingProvider):
-    """Wrap any callable as an embedding provider."""
+    """Wrap any async callable as an embedding provider."""
 
-    def __init__(self, fn: Callable[[list[str]], list[list[float]]], dim: int = 1536) -> None:
+    def __init__(self, fn: Callable[[list[str]], Awaitable[list[list[float]]]], dim: int = 1536) -> None:
         self._fn = fn
         self._dim = dim
 
-    def embed(self, texts: list[str]) -> list[list[float]]:
-        return self._fn(texts)
+    async def embed(self, texts: list[str]) -> list[list[float]]:
+        return await self._fn(texts)
 
     def dimension(self) -> int:
         return self._dim

@@ -28,7 +28,7 @@ class GeminiClient(LLMClient):
             return genai.Client(api_key=self._api_key, http_options=HttpOptions(api_version="v1"))
         return genai.Client(vertexai=True, http_options=HttpOptions(api_version="v1"))
 
-    def chat(self, messages: list[dict], system: str | None = None) -> str:
+    async def chat(self, messages: list[dict], system: str | None = None) -> str:
         from google.genai.types import GenerateContentConfig  # noqa: PLC0415
 
         # Build content: prepend system instruction to user messages
@@ -40,7 +40,7 @@ class GeminiClient(LLMClient):
 
         config = GenerateContentConfig(temperature=0.7)
 
-        response = self._client.models.generate_content(
+        response = await self._client.aio.models.generate_content(
             model=self.model,
             contents=user_content,
             config=config,

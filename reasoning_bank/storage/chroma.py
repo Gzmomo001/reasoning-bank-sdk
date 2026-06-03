@@ -20,28 +20,33 @@ class ChromaStorage(StorageBackend):
     or falls back to a local persistent client at ``storage_path``.
     """
 
-    def __init__(self, storage_path: str = "./memories") -> None:
-        self._storage_path = storage_path
-        self._client = self._init_client()
-        self._collection = self._client.get_or_create_collection(
-            name=_COLLECTION_NAME,
-            metadata={"hnsw:space": "cosine"},
-        )
+    def __init__(self, client, collection) -> None:
+        """Private constructor. Use ``ChromaStorage.create()`` instead."""
+        self._client = client
+        self._collection = collection
 
-    def _init_client(self):
+    @classmethod
+    async def create(cls, storage_path: str = "./memories") -> ChromaStorage:
+        """Create a ChromaStorage instance with an async ChromaDB client."""
+        import chromadb  # noqa: PLC0415
+
         host = os.environ.get("CHROMA_HOST")
         port = os.environ.get("CHROMA_PORT")
         if host and port:
-            import chromadb  # noqa: PLC0415
-
             logger.info("Connecting to ChromaDB at %s:%s", host, port)
-            return chromadb.HttpClient(host=host, port=int(port))
-        import chromadb  # noqa: PLC0415
+            client = await chromadb.AsyncHttpClient(host=host, port=int(port))
+        else:
+            logger.info("Using local ChromaDB at %s", storage_path)
+            settings = chromadb.Settings(persist_directory=storage_path, is_persistent=True)
+            client = await chromadb.AsyncClient.create(settings=settings)
 
-        logger.info("Using local ChromaDB at %s", self._storage_path)
-        return chromadb.PersistentClient(path=self._storage_path)
+        collection = await client.get_or_create_collection(
+            name=_COLLECTION_NAME,
+            metadata={"hnsw:space": "cosine"},
+        )
+        return cls(client=client, collection=collection)
 
-    def add(self, item: MemoryItem, embedding: list[float] | None = None) -> None:
+    async def add(self, item: MemoryItem, embedding: list[float] | None = None) -> None:
         doc = item.to_prompt_text()
         kwargs: dict = {
             "ids": [item.id],
@@ -58,9 +63,9 @@ class ChromaStorage(StorageBackend):
         }
         if embedding is not None:
             kwargs["embeddings"] = [embedding]
-        self._collection.upsert(**kwargs)
+        await self._collection.upsert(**kwargs)
 
-    def add_batch(self, items: list[MemoryItem], embeddings: list[list[float]] | None = None) -> None:
+    async def add_batch(self, items: list[MemoryItem], embeddings: list[list[float]] | None = None) -> None:
         if not items:
             return
         ids, docs, metas = [], [], []
@@ -80,14 +85,15 @@ class ChromaStorage(StorageBackend):
         kwargs: dict = {"ids": ids, "documents": docs, "metadatas": metas}
         if embeddings is not None:
             kwargs["embeddings"] = embeddings
-        self._collection.upsert(**kwargs)
+        await self._collection.upsert(**kwargs)
 
-    def retrieve(self, query_embedding: list[float], top_k: int) -> list[MemoryItem]:
-        if self._collection.count() == 0:
+    async def retrieve(self, query_embedding: list[float], top_k: int) -> list[MemoryItem]:
+        cnt = await self._collection.count()
+        if cnt == 0:
             return []
-        results = self._collection.query(
+        results = await self._collection.query(
             query_embeddings=[query_embedding],
-            n_results=min(top_k, self._collection.count()),
+            n_results=min(top_k, cnt),
             include=["metadatas", "distances"],
         )
         items: list[MemoryItem] = []
@@ -98,22 +104,19 @@ class ChromaStorage(StorageBackend):
             items.append(self._meta_to_item(meta, ids[i] if i < len(ids) else ""))
         return items
 
-    def delete(self, item_id: str) -> None:
+    async def delete(self, item_id: str) -> None:
         """Delete a single memory item by its ID."""
-        self._collection.delete(ids=[item_id])
+        await self._collection.delete(ids=[item_id])
 
-    def list_all(self) -> list[MemoryItem]:
-        results = self._collection.get(include=["metadatas"])
+    async def list_all(self) -> list[MemoryItem]:
+        results = await self._collection.get(include=["metadatas"])
         if not results or not results.get("metadatas"):
             return []
         ids = results.get("ids", [])
-        return [
-            self._meta_to_item(m, ids[i] if i < len(ids) else "")
-            for i, m in enumerate(results["metadatas"])
-        ]
+        return [self._meta_to_item(m, ids[i] if i < len(ids) else "") for i, m in enumerate(results["metadatas"])]
 
-    def count(self) -> int:
-        return self._collection.count()
+    async def count(self) -> int:
+        return await self._collection.count()
 
     @staticmethod
     def _meta_to_item(meta: dict, item_id: str = "") -> MemoryItem:

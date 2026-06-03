@@ -14,7 +14,7 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
-def induce(  # noqa: PLR0913
+async def induce(
     llm: LLMClient,
     query: str,
     trajectory: str,
@@ -38,7 +38,7 @@ def induce(  # noqa: PLR0913
     # Format the trajectory as the user message
     user_msg = f"**Query:** {query}\n\n**Trajectory:**\n{trajectory}"
 
-    raw = llm.chat(
+    raw = await llm.chat(
         messages=[{"role": "user", "content": user_msg}],
         system=system_prompt,
     )
