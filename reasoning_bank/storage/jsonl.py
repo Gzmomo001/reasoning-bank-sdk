@@ -48,7 +48,7 @@ class JsonlStorage(StorageBackend):
         embeddings_map = self._load_embeddings()
         scored: list[tuple[float, MemoryItem]] = []
         for item in all_items:
-            emb = embeddings_map.get(item.task_id)
+            emb = embeddings_map.get(item.id)
             if emb is None:
                 continue
             sim = self._cosine_similarity(query_embedding, emb)
@@ -57,9 +57,9 @@ class JsonlStorage(StorageBackend):
         scored.sort(key=lambda x: x[0], reverse=True)
         return [item for _, item in scored[:top_k]]
 
-    def delete(self, task_id: str) -> None:
+    def delete(self, item_id: str) -> None:
         items = self.list_all()
-        remaining = [item for item in items if item.task_id != task_id]
+        remaining = [item for item in items if item.id != item_id]
         with open(self._data_path, "w") as f:
             for item in remaining:
                 f.write(json.dumps(item.to_dict()) + "\n")
@@ -82,8 +82,8 @@ class JsonlStorage(StorageBackend):
     def count(self) -> int:
         return len(self.list_all())
 
-    def store_embedding(self, task_id: str, embedding: list[float]) -> None:
-        record = {"id": task_id, "embedding": embedding}
+    def store_embedding(self, item_id: str, embedding: list[float]) -> None:
+        record = {"id": item_id, "embedding": embedding}
         with open(self._embed_path, "a") as f:
             f.write(json.dumps(record) + "\n")
 

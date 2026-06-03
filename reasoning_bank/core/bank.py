@@ -50,7 +50,6 @@ class MemoryBank:
 
         # Induce memories from a trajectory
         items = bank.induce(
-            task_id="task-456",
             query="Navigate to shopping cart",
             trajectory="...",
             status="success",
@@ -84,7 +83,6 @@ class MemoryBank:
 
     def induce(
         self,
-        task_id: str,
         query: str,
         trajectory: str,
         status: str,
@@ -95,7 +93,6 @@ class MemoryBank:
         self._llm_limiter.wait()
         items = induce(
             llm=self._llm,
-            task_id=task_id,
             query=query,
             trajectory=trajectory,
             status=status,
@@ -106,7 +103,6 @@ class MemoryBank:
 
     def induce_scaling(
         self,
-        task_id: str,
         query: str,
         trajectories: list[dict],
         domain: str = "web",
@@ -116,7 +112,6 @@ class MemoryBank:
         self._llm_limiter.wait()
         items = induce_scaling(
             llm=self._llm,
-            task_id=task_id,
             query=query,
             trajectories=trajectories,
             domain=domain,
@@ -126,7 +121,6 @@ class MemoryBank:
 
     def add(
         self,
-        task_id: str,
         query: str,
         memory_items: list[str],
         status: str = "success",
@@ -134,7 +128,6 @@ class MemoryBank:
     ) -> MemoryItem:
         """Directly add a memory item (no LLM induction)."""
         item = MemoryItem(
-            task_id=task_id,
             query=query,
             status=status,
             domain=domain,
@@ -143,9 +136,9 @@ class MemoryBank:
         self._store_with_embeddings([item])
         return item
 
-    def delete(self, task_id: str) -> None:
-        """Delete all memory items for a given task."""
-        self._storage.delete(task_id)
+    def delete(self, item_id: str) -> None:
+        """Delete a memory item by its ID."""
+        self._storage.delete(item_id)
 
     def list(self) -> list[MemoryItem]:
         """List all stored memory items."""
@@ -170,7 +163,7 @@ class MemoryBank:
         if isinstance(self._storage, JsonlStorage):
             self._storage.add_batch(items)
             for item, emb in zip(items, embeddings):
-                self._storage.store_embedding(item.task_id, emb)
+                self._storage.store_embedding(item.id, emb)
         else:
             self._storage.add_batch(items, embeddings=embeddings)
 

@@ -111,7 +111,7 @@ ls logs/mcp/     # mcp.log
 | GET | `/v1/memory/items` | 列出所有记忆 |
 | GET | `/v1/memory/items/count` | 获取记忆总数 |
 | GET/POST | `/v1/memory/items/search` | 语义检索 top-k 记忆 |
-| DELETE | `/v1/memory/items/{task_id}` | 删除指定 task_id 的记忆 |
+| DELETE | `/v1/memory/items/{item_id}` | 删除指定 ID 的记忆条目 |
 
 ### 归纳操作（需要 LLM）
 
@@ -128,7 +128,6 @@ ls logs/mcp/     # mcp.log
 curl -X POST http://localhost:8000/v1/memory/items \
   -H "Content-Type: application/json" \
   -d '{
-    "task_id": "task-001",
     "query": "fix login bug",
     "memory_items": ["use button#login-btn", "wait 2s for animation"],
     "status": "success",
@@ -151,7 +150,7 @@ curl -X POST http://localhost:8000/v1/memory/items/search \
 **删除记忆：**
 
 ```bash
-curl -X DELETE http://localhost:8000/v1/memory/items/task-001
+curl -X DELETE http://localhost:8000/v1/memory/items/<item_id>
 ```
 
 **轨迹归纳（需要 LLM）：**
@@ -160,7 +159,6 @@ curl -X DELETE http://localhost:8000/v1/memory/items/task-001
 curl -X POST http://localhost:8000/v1/memory/inductions \
   -H "Content-Type: application/json" \
   -d '{
-    "task_id": "task-002",
     "query": "navigate to checkout",
     "trajectory": "1. Click cart icon -> 2. Select items -> 3. Click checkout",
     "status": "success",

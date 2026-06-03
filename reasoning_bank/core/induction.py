@@ -13,7 +13,6 @@ logger = logging.getLogger(__name__)
 
 def induce(
     llm: LLMClient,
-    task_id: str,
     query: str,
     trajectory: str,
     status: str,
@@ -23,7 +22,6 @@ def induce(
 
     Args:
         llm: LLM client for generating memory items.
-        task_id: Unique identifier for the task.
         query: The user query / task objective.
         trajectory: Formatted trajectory text (think/action pairs).
         status: "success" or "fail".
@@ -47,7 +45,6 @@ def induce(
     items = []
     for i, text in enumerate(memory_texts):
         item = MemoryItem(
-            task_id=task_id,
             query=query,
             status=status,
             domain=domain,
@@ -56,7 +53,7 @@ def induce(
         items.append(item)
 
     if not items:
-        logger.warning("No memory items extracted for task %s", task_id)
+        logger.warning("No memory items extracted for query: %s", query)
 
     return items
 

@@ -28,9 +28,8 @@ import pytest
 from conftest import DOCKER_DIR, compose_restart, wait_for_service
 
 
-def _api_add(api_url: str, task_id: str, query: str, memory_items: list[str], **kwargs) -> httpx.Response:
+def _api_add(api_url: str, query: str, memory_items: list[str], **kwargs) -> httpx.Response:
     resp = httpx.post(f"{api_url}/v1/memory/items", json={
-        "task_id": task_id,
         "query": query,
         "memory_items": memory_items,
         "status": kwargs.get("status", "success"),
@@ -95,15 +94,14 @@ def test_api_empty_retrieve(compose_project, api_url):
 
 @pytest.mark.integration
 def test_api_delete_nonexistent(compose_project, api_url):
-    resp = httpx.delete(f"{api_url}/v1/memory/items/nonexistent-task", timeout=10)
+    resp = httpx.delete(f"{api_url}/v1/memory/items/nonexistent-id", timeout=10)
     assert resp.status_code == 200
     assert resp.json()["data"]["deleted"] is True
 
 
 @pytest.mark.integration
 def test_api_add_and_count(compose_project, api_url):
-    task_id = f"test-{os.getpid()}"
-    _api_add(api_url, task_id, "integration test query", ["memory item from integration test"])
+    _api_add(api_url, "integration test query", ["memory item from integration test"])
 
     resp = httpx.get(f"{api_url}/v1/memory/items/count", timeout=10)
     assert resp.status_code == 200
@@ -112,37 +110,36 @@ def test_api_add_and_count(compose_project, api_url):
 
 @pytest.mark.integration
 def test_api_add_and_retrieve(compose_project, api_url):
-    task_id = f"retrieve-{os.getpid()}"
-    _api_add(api_url, task_id, "how to fix login button", ["click the blue login button", "check credentials"])
+    _api_add(api_url, "how to fix login button", ["click the blue login button", "check credentials"])
 
     resp = httpx.post(f"{api_url}/v1/memory/items/search", json={"query": "fix login", "top_k": 3}, timeout=30)
     assert resp.status_code == 200
     body = resp.json()
     assert isinstance(body["data"], list)
     if body["data"]:
-        assert "memory_items" in body["data"][0] or "task_id" in body["data"][0]
+        assert "memory_items" in body["data"][0] or "query" in body["data"][0]
 
 
 @pytest.mark.integration
 def test_api_add_and_delete(compose_project, api_url):
-    task_id = f"del-{os.getpid()}"
-    _api_add(api_url, task_id, "delete test", ["to be deleted"])
+    resp = _api_add(api_url, "delete test", ["to be deleted"])
+    item_id = resp.json()["data"]["id"]
 
-    resp = httpx.delete(f"{api_url}/v1/memory/items/{task_id}", timeout=10)
+    resp = httpx.delete(f"{api_url}/v1/memory/items/{item_id}", timeout=10)
     assert resp.status_code == 200
     assert resp.json()["data"]["deleted"] is True
 
 
 @pytest.mark.integration
 def test_api_list_returns_added_items(compose_project, api_url):
-    task_id = f"list-{os.getpid()}"
-    _api_add(api_url, task_id, "list test", ["item for list test"])
+    resp = _api_add(api_url, "list test", ["item for list test"])
+    item_id = resp.json()["data"]["id"]
 
     resp = httpx.get(f"{api_url}/v1/memory/items", timeout=10)
     data = resp.json()["data"]
     assert isinstance(data, list)
-    task_ids = {item.get("task_id") for item in data}
-    assert task_id in task_ids
+    ids = {item.get("id") for item in data}
+    assert item_id in ids
 
 
 # ---------------------------------------------------------------------------
@@ -202,7 +199,7 @@ def test_mcp_list_tool(compose_project, mcp_url):
 @pytest.mark.integration
 def test_data_shared_between_api_and_mcp(compose_project, api_url, mcp_url):
     """Add via API, verify count via MCP."""
-    _api_add(api_url, f"shared-{os.getpid()}", "cross-service test", ["shared data"])
+    _api_add(api_url, "cross-service test", ["shared data"])
 
     result = _mcp_sse_request(mcp_url, {
         "jsonrpc": "2.0",
@@ -220,16 +217,16 @@ def test_data_shared_between_api_and_mcp(compose_project, api_url, mcp_url):
 @pytest.mark.integration
 def test_data_survives_api_restart(compose_project, api_url):
     """Add a memory, restart API, verify it's still there."""
-    task_id = f"persist-{os.getpid()}"
-    _api_add(api_url, task_id, "persistence test", ["should survive restart"])
+    resp = _api_add(api_url, "persistence test", ["should survive restart"])
+    item_id = resp.json()["data"]["id"]
 
     compose_restart(compose_project, "api")
     wait_for_service("localhost", 8000, timeout=60)
 
     resp = httpx.get(f"{api_url}/v1/memory/items", timeout=10)
     data = resp.json()["data"]
-    task_ids = {item.get("task_id") for item in data}
-    assert task_id in task_ids
+    ids = {item.get("id") for item in data}
+    assert item_id in ids
 
 
 # ---------------------------------------------------------------------------

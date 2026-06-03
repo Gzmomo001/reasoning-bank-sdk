@@ -17,7 +17,7 @@ def client(bank):
 
 def test_create_and_count(client):
     resp = client.post("/v1/memory/items", json={
-        "task_id": "t1", "query": "q1", "memory_items": ["m1"], "status": "success",
+        "query": "q1", "memory_items": ["m1"], "status": "success",
     })
     assert resp.status_code == 201
     body = resp.json()
@@ -28,10 +28,10 @@ def test_create_and_count(client):
 
 def test_list(client):
     client.post("/v1/memory/items", json={
-        "task_id": "t1", "query": "q1", "memory_items": ["m1"],
+        "query": "q1", "memory_items": ["m1"],
     })
     client.post("/v1/memory/items", json={
-        "task_id": "t2", "query": "q2", "memory_items": ["m2"],
+        "query": "q2", "memory_items": ["m2"],
     })
     body = client.get("/v1/memory/items").json()
     assert len(body["data"]) == 2
@@ -39,10 +39,11 @@ def test_list(client):
 
 
 def test_delete(client):
-    client.post("/v1/memory/items", json={
-        "task_id": "t1", "query": "q1", "memory_items": ["m1"],
+    resp = client.post("/v1/memory/items", json={
+        "query": "q1", "memory_items": ["m1"],
     })
-    resp = client.delete("/v1/memory/items/t1")
+    item_id = resp.json()["data"]["id"]
+    resp = client.delete(f"/v1/memory/items/{item_id}")
     assert resp.status_code == 200
     assert resp.json()["data"]["deleted"] is True
     assert client.get("/v1/memory/items/count").json()["data"]["count"] == 0
@@ -50,7 +51,7 @@ def test_delete(client):
 
 def test_search_get(client):
     client.post("/v1/memory/items", json={
-        "task_id": "t1", "query": "fix login", "memory_items": ["use button"],
+        "query": "fix login", "memory_items": ["use button"],
     })
     resp = client.get("/v1/memory/items/search", params={"query": "fix login", "top_k": 1})
     assert resp.status_code == 200
@@ -61,7 +62,7 @@ def test_search_get(client):
 
 def test_search_post(client):
     client.post("/v1/memory/items", json={
-        "task_id": "t1", "query": "fix login", "memory_items": ["use button"],
+        "query": "fix login", "memory_items": ["use button"],
     })
     resp = client.post("/v1/memory/items/search", json={"query": "fix login", "top_k": 1})
     assert resp.status_code == 200
@@ -74,12 +75,13 @@ def test_response_format(client):
     """Verify unified ApiResponse wrapper on all endpoints."""
     # POST /items → 201 with data
     resp = client.post("/v1/memory/items", json={
-        "task_id": "t1", "query": "q1", "memory_items": ["m1"],
+        "query": "q1", "memory_items": ["m1"],
     })
     assert resp.status_code == 201
     body = resp.json()
     assert "data" in body
     assert "meta" in body
+    item_id = body["data"]["id"]
 
     # GET /items → 200 with data + meta.total
     resp = client.get("/v1/memory/items")
@@ -93,8 +95,8 @@ def test_response_format(client):
     assert "data" in body
     assert isinstance(body["data"]["count"], int)
 
-    # DELETE /items/{task_id} → 200 with data.deleted
-    resp = client.delete("/v1/memory/items/t1")
+    # DELETE /items/{item_id} → 200 with data.deleted
+    resp = client.delete(f"/v1/memory/items/{item_id}")
     body = resp.json()
     assert "data" in body
     assert body["data"]["deleted"] is True

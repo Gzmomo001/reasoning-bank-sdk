@@ -49,7 +49,6 @@ class ChromaStorage(StorageBackend):
             "ids": [item.id],
             "documents": [doc],
             "metadatas": [{
-                "task_id": item.task_id,
                 "query": item.query,
                 "status": item.status,
                 "domain": item.domain,
@@ -70,7 +69,6 @@ class ChromaStorage(StorageBackend):
             ids.append(item.id)
             docs.append(doc)
             metas.append({
-                "task_id": item.task_id,
                 "query": item.query,
                 "status": item.status,
                 "domain": item.domain,
@@ -93,30 +91,27 @@ class ChromaStorage(StorageBackend):
         items: list[MemoryItem] = []
         if not results or not results.get("metadatas"):
             return items
-        for meta in results["metadatas"][0]:
-            items.append(self._meta_to_item(meta))
+        ids = results.get("ids", [[]])[0]
+        for i, meta in enumerate(results["metadatas"][0]):
+            items.append(self._meta_to_item(meta, ids[i] if i < len(ids) else ""))
         return items
 
-    def delete(self, task_id: str) -> None:
-        # Find all items with the given task_id
-        results = self._collection.get(
-            where={"task_id": task_id},
-            include=["metadatas"],
-        )
-        if results and results.get("ids"):
-            self._collection.delete(ids=results["ids"])
+    def delete(self, item_id: str) -> None:
+        """Delete a single memory item by its ID."""
+        self._collection.delete(ids=[item_id])
 
     def list_all(self) -> list[MemoryItem]:
         results = self._collection.get(include=["metadatas"])
         if not results or not results.get("metadatas"):
             return []
-        return [self._meta_to_item(m) for m in results["metadatas"]]
+        ids = results.get("ids", [])
+        return [self._meta_to_item(m, ids[i] if i < len(ids) else "") for i, m in enumerate(results["metadatas"])]
 
     def count(self) -> int:
         return self._collection.count()
 
     @staticmethod
-    def _meta_to_item(meta: dict) -> MemoryItem:
+    def _meta_to_item(meta: dict, item_id: str = "") -> MemoryItem:
         from datetime import datetime
 
         memory_text = meta.pop("memory_items_json", "")
@@ -126,8 +121,7 @@ class ChromaStorage(StorageBackend):
             created_at = datetime.fromisoformat(created_at)
 
         return MemoryItem(
-            id="",  # We don't store id in metadata; task_id serves as key
-            task_id=meta.get("task_id", ""),
+            id=item_id,
             query=meta.get("query", ""),
             status=meta.get("status", ""),
             domain=meta.get("domain", "web"),

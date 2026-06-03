@@ -24,7 +24,6 @@ router = APIRouter(prefix="/v1/memory", tags=["memory"])
 class MemoryItemSchema(BaseModel):
     """Detailed representation of a stored memory item."""
     id: str
-    task_id: str
     query: str
     status: str
     domain: str
@@ -42,7 +41,7 @@ class CountData(BaseModel):
 
 class DeleteData(BaseModel):
     deleted: bool
-    task_id: str
+    id: str
 
 
 class IdData(BaseModel):
@@ -84,7 +83,6 @@ class InductionResponse(BaseModel):
 # ---------------------------------------------------------------------------
 
 class AddRequest(BaseModel):
-    task_id: str
     query: str
     memory_items: list[str]
     status: str = "success"
@@ -97,7 +95,6 @@ class SearchRequest(BaseModel):
 
 
 class InduceRequest(BaseModel):
-    task_id: str
     query: str
     trajectory: str
     status: str
@@ -110,7 +107,6 @@ class TrajectoryItem(BaseModel):
 
 
 class InduceBatchRequest(BaseModel):
-    task_id: str
     query: str
     trajectories: list[TrajectoryItem]
     domain: str = "web"
@@ -211,7 +207,6 @@ def create_item(req: AddRequest) -> CreateItemResponse:
     """Add a memory item directly."""
     bank = get_bank()
     item = bank.add(
-        task_id=req.task_id,
         query=req.query,
         memory_items=req.memory_items,
         status=req.status,
@@ -220,12 +215,12 @@ def create_item(req: AddRequest) -> CreateItemResponse:
     return CreateItemResponse(data=MemoryItemSchema(**item.to_dict()))
 
 
-@router.delete("/items/{task_id}", response_model=DeleteResponse)
-def delete_item(task_id: str) -> DeleteResponse:
-    """Delete all memories for a given task ID."""
+@router.delete("/items/{item_id}", response_model=DeleteResponse)
+def delete_item(item_id: str) -> DeleteResponse:
+    """Delete a memory item by its ID."""
     bank = get_bank()
-    bank.delete(task_id=task_id)
-    return DeleteResponse(data=DeleteData(deleted=True, task_id=task_id))
+    bank.delete(item_id=item_id)
+    return DeleteResponse(data=DeleteData(deleted=True, id=item_id))
 
 
 # ---------------------------------------------------------------------------
@@ -238,7 +233,6 @@ def create_induction(req: InduceRequest) -> InductionResponse:
     bank = get_bank()
     try:
         items = bank.induce(
-            task_id=req.task_id,
             query=req.query,
             trajectory=req.trajectory,
             status=req.status,
@@ -258,7 +252,6 @@ def create_induction_batch(req: InduceBatchRequest) -> InductionResponse:
     bank = get_bank()
     try:
         items = bank.induce_scaling(
-            task_id=req.task_id,
             query=req.query,
             trajectories=[t.model_dump() for t in req.trajectories],
             domain=req.domain,

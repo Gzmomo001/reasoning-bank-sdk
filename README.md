@@ -42,7 +42,6 @@ memories = bank.retrieve(query="how to fix login bug", top_k=3)
 
 # Induce memories from a successful trajectory
 items = bank.induce(
-    task_id="task-456",
     query="Navigate to shopping cart",
     trajectory="...",
     status="success",
@@ -51,7 +50,6 @@ items = bank.induce(
 
 # Induce memories by comparing multiple trajectories
 items = bank.induce_scaling(
-    task_id="task-789",
     query="Add item to wishlist",
     trajectories=[
         {"trajectory": "...", "status": "success"},
@@ -62,7 +60,6 @@ items = bank.induce_scaling(
 
 # Directly add a memory item (no LLM needed)
 item = bank.add(
-    task_id="task-101",
     query="Search for products",
     memory_items=["Always use the search bar in the top navigation..."],
     status="success",
@@ -72,7 +69,7 @@ item = bank.add(
 # List, count, or delete
 all_memories = bank.list()
 total = bank.count()
-bank.delete(task_id="task-456")
+bank.delete(item_id=item.id)
 ```
 
 ### REST API
@@ -96,7 +93,6 @@ Add a memory item directly (no LLM needed).
 ```json
 // Request
 {
-  "task_id": "task-101",
   "query": "Search for products",
   "memory_items": ["Always use the search bar in the top navigation"],
   "status": "success",
@@ -107,7 +103,6 @@ Add a memory item directly (no LLM needed).
 {
   "data": {
     "id": "d4e5f6...",
-    "task_id": "task-101",
     "query": "Search for products",
     "status": "success",
     "domain": "general",
@@ -128,7 +123,6 @@ List all stored memories.
   "data": [
     {
       "id": "...",
-      "task_id": "task-456",
       "query": "...",
       "status": "success",
       "domain": "web",
@@ -176,12 +170,10 @@ POST with JSON body:
   "data": [
     {
       "id": "a1b2c3...",
-      "task_id": "task-456",
       "query": "fix login issue",
       "status": "success",
       "domain": "web",
       "memory_items": ["Check the session cookie expiration..."],
-      "template_id": null,
       "created_at": "2025-01-01T00:00:00+00:00"
     }
   ],
@@ -189,14 +181,14 @@ POST with JSON body:
 }
 ```
 
-#### `DELETE /v1/memory/items/{task_id}`
+#### `DELETE /v1/memory/items/{item_id}`
 
-Delete all memories for a given task ID.
+Delete a memory item by its ID.
 
 ```json
 // Response
 {
-  "data": { "deleted": true, "task_id": "task-456" },
+  "data": { "deleted": true, "id": "a1b2c3..." },
   "meta": {}
 }
 ```
@@ -208,7 +200,6 @@ Run full auto induction — extract memory items from a single trajectory using 
 ```json
 // Request
 {
-  "task_id": "task-456",
   "query": "Navigate to shopping cart",
   "trajectory": "Step 1: Clicked on 'Cart' icon...",
   "status": "success",
@@ -220,12 +211,10 @@ Run full auto induction — extract memory items from a single trajectory using 
   "data": [
     {
       "id": "...",
-      "task_id": "task-456",
       "query": "Navigate to shopping cart",
       "status": "success",
       "domain": "web",
       "memory_items": ["The cart icon is located in the top-right corner..."],
-      "template_id": null,
       "created_at": "..."
     }
   ],
@@ -240,7 +229,6 @@ Run multi-trajectory contrast induction — compare trajectories and extract con
 ```json
 // Request
 {
-  "task_id": "task-789",
   "query": "Add item to wishlist",
   "trajectories": [
     { "trajectory": "Clicked wishlist button...", "status": "success" },
@@ -254,12 +242,10 @@ Run multi-trajectory contrast induction — compare trajectories and extract con
   "data": [
     {
       "id": "...",
-      "task_id": "task-789",
       "query": "Add item to wishlist",
       "status": "success",
       "domain": "web",
       "memory_items": ["The wishlist button is a heart icon, not the cart button..."],
-      "template_id": null,
       "created_at": "..."
     }
   ],
@@ -286,7 +272,7 @@ reasoning-bank-mcp --transport sse --port 9000
 | `reasoning_bank_induce` | Extract memory items from a single trajectory using LLM |
 | `reasoning_bank_induce_scaling` | Compare multiple trajectories and extract contrastive insights |
 | `reasoning_bank_list` | List all stored memories |
-| `reasoning_bank_delete` | Delete all memories for a given task ID |
+| `reasoning_bank_delete` | Delete a memory item by its ID |
 | `reasoning_bank_count` | Get total memory count |
 
 #### MCP Resource
@@ -305,7 +291,6 @@ top_k: int       — Number of results (default: 3)
 
 **`reasoning_bank_add`**
 ```
-task_id: string        — Task identifier
 query: string          — Task description
 memory_items: string[] — Memory texts to store
 status: string         — "success" | "fail" (default: "success")
@@ -314,7 +299,6 @@ domain: string         — "web" | "coding" | "general" (default: "general")
 
 **`reasoning_bank_induce`**
 ```
-task_id: string     — Task identifier
 query: string       — Task description
 trajectory: string  — Full agent trajectory text
 status: string      — "success" | "fail"
@@ -323,7 +307,6 @@ domain: string      — "web" | "coding" | "general" (default: "web")
 
 **`reasoning_bank_induce_scaling`**
 ```
-task_id: string                       — Task identifier
 query: string                         — Task description
 trajectories: {trajectory, status}[]  — Multiple trajectory entries
 domain: string                        — "web" | "coding" | "general" (default: "web")
@@ -331,7 +314,7 @@ domain: string                        — "web" | "coding" | "general" (default:
 
 **`reasoning_bank_delete`**
 ```
-task_id: string — Task identifier to delete
+item_id: string — Memory item ID to delete
 ```
 
 #### Configure MCP for Claude Code

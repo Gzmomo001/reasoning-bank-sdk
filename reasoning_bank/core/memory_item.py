@@ -11,7 +11,6 @@ from datetime import datetime, timezone
 class MemoryItem:
     """A single memory entry extracted from an agent trajectory."""
 
-    task_id: str
     query: str
     status: str  # "success" | "fail"
     domain: str  # "web" | "coding" | "general"
@@ -26,7 +25,6 @@ class MemoryItem:
     def to_dict(self) -> dict:
         return {
             "id": self.id,
-            "task_id": self.task_id,
             "query": self.query,
             "status": self.status,
             "domain": self.domain,

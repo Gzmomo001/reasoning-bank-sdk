@@ -13,7 +13,6 @@ logger = logging.getLogger(__name__)
 
 def induce_scaling(
     llm: LLMClient,
-    task_id: str,
     query: str,
     trajectories: list[dict],
     domain: str = "web",
@@ -22,7 +21,6 @@ def induce_scaling(
 
     Args:
         llm: LLM client for generating memory items.
-        task_id: Unique identifier for the task.
         query: The user query / task objective.
         trajectories: List of dicts with keys "trajectory" (str) and "status" ("success"/"fail").
         domain: "web", "coding", or "general".
@@ -50,7 +48,6 @@ def induce_scaling(
     items = []
     for text in memory_texts:
         item = MemoryItem(
-            task_id=task_id,
             query=query,
             status="mixed",
             domain=domain,
@@ -59,7 +56,7 @@ def induce_scaling(
         items.append(item)
 
     if not items:
-        logger.warning("No memory items extracted from scaling induction for task %s", task_id)
+        logger.warning("No memory items extracted from scaling induction for query: %s", query)
 
     return items
 

@@ -69,7 +69,6 @@ def reasoning_bank_retrieve(query: str, top_k: int = 3) -> str:
 
 @mcp.tool()
 def reasoning_bank_add(
-    task_id: str,
     query: str,
     memory_items: list[str],
     status: str = "success",
@@ -77,7 +76,6 @@ def reasoning_bank_add(
 ) -> str:
     """Add a memory item directly to the ReasoningBank (no LLM induction)."""
     item = _bank().add(
-        task_id=task_id,
         query=query,
         memory_items=memory_items,
         status=status,
@@ -88,7 +86,6 @@ def reasoning_bank_add(
 
 @mcp.tool()
 def reasoning_bank_induce(
-    task_id: str,
     query: str,
     trajectory: str,
     status: str,
@@ -96,7 +93,6 @@ def reasoning_bank_induce(
 ) -> str:
     """Run full auto induction: extract memory items from a single trajectory using LLM."""
     items = _bank().induce(
-        task_id=task_id,
         query=query,
         trajectory=trajectory,
         status=status,
@@ -107,14 +103,12 @@ def reasoning_bank_induce(
 
 @mcp.tool()
 def reasoning_bank_induce_scaling(
-    task_id: str,
     query: str,
     trajectories: list[dict],
     domain: str = "web",
 ) -> str:
     """Run multi-trajectory contrast induction: compare trajectories and extract memory items."""
     items = _bank().induce_scaling(
-        task_id=task_id,
         query=query,
         trajectories=trajectories,
         domain=domain,
@@ -130,9 +124,9 @@ def reasoning_bank_list() -> str:
 
 
 @mcp.tool()
-def reasoning_bank_delete(task_id: str) -> str:
-    """Delete all memories for a given task ID."""
-    _bank().delete(task_id=task_id)
+def reasoning_bank_delete(item_id: str) -> str:
+    """Delete a memory item by its ID."""
+    _bank().delete(item_id=item_id)
     return json.dumps({"ok": True})
 
 
