@@ -3,6 +3,32 @@
     "feature-dev@claude-plugins-official": true
   },
   "hooks": {
+    "UserPromptSubmit": [
+      {
+        "matcher": "",
+        "once": true,
+        "hooks": [
+          {
+            "type": "command",
+            "command": "uv run python $CLAUDE_PROJECT_DIR/scripts/memory_hooks.py retrieve",
+            "timeout": 10
+          }
+        ]
+      }
+    ],
+    "SessionEnd": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "uv run python $CLAUDE_PROJECT_DIR/scripts/memory_hooks.py induce",
+            "async": true,
+            "timeout": 120
+          }
+        ]
+      }
+    ],
     "PostToolUse": [
       {
         "matcher": "EnterWorktree",

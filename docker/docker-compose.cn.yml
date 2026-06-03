@@ -5,7 +5,7 @@ services:
     ports:
       - "8001:8000"
     volumes:
-      - ./chroma_data:/data
+      - ./chroma_data:/chroma_data
       - ./config.yaml:/config.yaml
     environment:
       - ANONYMIZED_TELEMETRY=FALSE
