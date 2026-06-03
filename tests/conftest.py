@@ -20,14 +20,16 @@ def make_llm():
     if not model:
         pytest.skip("LLM_MODEL not set in environment")
     if provider == "anthropic":
-        from reasoning_bank.llm.anthropic_client import AnthropicClient
+        from reasoning_bank.llm.anthropic_client import AnthropicClient  # noqa: PLC0415
+
         return AnthropicClient(model=model)
-    elif provider in ("vertexai", "google_ai"):
-        from reasoning_bank.llm.gemini_client import GeminiClient
+    if provider in ("vertexai", "google_ai"):
+        from reasoning_bank.llm.gemini_client import GeminiClient  # noqa: PLC0415
+
         return GeminiClient(model=model)
-    else:
-        from reasoning_bank.llm.openai_client import OpenAIClient
-        return OpenAIClient(model=model)
+    from reasoning_bank.llm.openai_client import OpenAIClient  # noqa: PLC0415
+
+    return OpenAIClient(model=model)
 
 
 @pytest.fixture(scope="session")
@@ -38,7 +40,8 @@ def llm():
 @pytest.fixture
 def bank(llm_with_retry, tmp_path):
     """MemoryBank with real embedding + real LLM (with retry) + ChromaDB in a temp directory."""
-    from reasoning_bank import MemoryBank
+    from reasoning_bank import MemoryBank  # noqa: PLC0415
+
     return MemoryBank(
         storage="chroma",
         storage_path=str(tmp_path / "memories"),

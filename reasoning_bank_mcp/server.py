@@ -10,10 +10,10 @@ from typing import TYPE_CHECKING
 from mcp.server.fastmcp import FastMCP
 
 from reasoning_bank import MemoryBank
-from reasoning_bank.logging_config import setup_logging
 from reasoning_bank.llm.anthropic_client import AnthropicClient
 from reasoning_bank.llm.gemini_client import GeminiClient
 from reasoning_bank.llm.openai_client import OpenAIClient
+from reasoning_bank.logging_config import setup_logging
 
 if TYPE_CHECKING:
     from reasoning_bank.llm.base import LLMClient

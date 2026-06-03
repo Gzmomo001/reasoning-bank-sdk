@@ -7,13 +7,14 @@ import socket
 import subprocess
 import time
 import uuid
+from pathlib import Path
 
 import pytest
-
 
 # ---------------------------------------------------------------------------
 # Marker registration
 # ---------------------------------------------------------------------------
+
 
 def pytest_configure(config):
     config.addinivalue_line(
@@ -25,10 +26,10 @@ def pytest_configure(config):
 # Path helpers
 # ---------------------------------------------------------------------------
 
-TESTS_DIR = os.path.dirname(os.path.abspath(__file__))
-DOCKER_DIR = os.path.dirname(TESTS_DIR)
-SDK_ROOT = os.path.dirname(DOCKER_DIR)
-COMPOSE_FILE = os.path.join(DOCKER_DIR, "docker-compose.yml")
+TESTS_DIR = Path(__file__).resolve().parent
+DOCKER_DIR = TESTS_DIR.parent
+SDK_ROOT = DOCKER_DIR.parent
+COMPOSE_FILE = DOCKER_DIR / "docker-compose.yml"
 
 
 def _get_project_name() -> str:
@@ -39,25 +40,30 @@ def _get_project_name() -> str:
 # Docker Compose helpers
 # ---------------------------------------------------------------------------
 
+
 def compose_up(project: str, extra_env: dict | None = None) -> subprocess.CompletedProcess:
-    cmd = ["docker", "compose", "-p", project, "-f", COMPOSE_FILE, "up", "--wait", "--build", "-d"]
+    cmd = ["docker", "compose", "-p", project, "-f", str(COMPOSE_FILE), "up", "--wait", "--build", "-d"]
     env = os.environ.copy()
     if extra_env:
         env.update(extra_env)
-    return subprocess.run(cmd, capture_output=True, text=True, timeout=300, env=env)
+    return subprocess.run(cmd, capture_output=True, text=True, timeout=300, env=env)  # noqa: PLW1510
 
 
 def compose_down(project: str) -> subprocess.CompletedProcess:
-    return subprocess.run(
-        ["docker", "compose", "-p", project, "-f", COMPOSE_FILE, "down", "--volumes", "--remove-orphans"],
-        capture_output=True, text=True, timeout=60,
+    return subprocess.run(  # noqa: PLW1510
+        ["docker", "compose", "-p", project, "-f", str(COMPOSE_FILE), "down", "--volumes", "--remove-orphans"],
+        capture_output=True,
+        text=True,
+        timeout=60,
     )
 
 
 def compose_restart(project: str, *services: str) -> subprocess.CompletedProcess:
-    return subprocess.run(
-        ["docker", "compose", "-p", project, "-f", COMPOSE_FILE, "restart", *services],
-        capture_output=True, text=True, timeout=120,
+    return subprocess.run(  # noqa: PLW1510
+        ["docker", "compose", "-p", project, "-f", str(COMPOSE_FILE), "restart", *services],
+        capture_output=True,
+        text=True,
+        timeout=120,
     )
 
 
@@ -67,14 +73,16 @@ def wait_for_service(host: str, port: int, timeout: int = 120) -> None:
         try:
             with socket.create_connection((host, port), timeout=3):
                 return
-        except (ConnectionRefusedError, socket.timeout, OSError):
+        except (TimeoutError, ConnectionRefusedError, OSError):
             time.sleep(min(2, deadline - time.monotonic()))
-    raise TimeoutError(f"Service at {host}:{port} did not become reachable within {timeout}s")
+    msg = f"Service at {host}:{port} did not become reachable within {timeout}s"
+    raise TimeoutError(msg)
 
 
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture(scope="session")
 def compose_project():
@@ -83,12 +91,13 @@ def compose_project():
     try:
         result = compose_up(project)
         if result.returncode != 0:
-            raise RuntimeError(f"docker compose up failed:\n{result.stderr}")
+            msg = f"docker compose up failed:\n{result.stderr}"
+            raise RuntimeError(msg)
 
         # Wait for each service port
         wait_for_service("localhost", 8001, timeout=120)  # chromadb
         wait_for_service("localhost", 8000, timeout=120)  # api
-        wait_for_service("localhost", 9000, timeout=120)   # mcp
+        wait_for_service("localhost", 9000, timeout=120)  # mcp
 
         yield project
     finally:

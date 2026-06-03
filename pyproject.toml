@@ -74,6 +74,15 @@ ignore = [
     "FBT",     # boolean trap in tests
     "SLF",     # private member access in tests
 ]
+"docker/tests/*" = [
+    "S101",    # assert in tests is fine
+    "PLR2004", # magic numbers in tests are fine
+    "S",       # security issues (subprocess, hardcoded values etc.)
+    "ARG",     # unused arguments in test fixtures
+    "PT",      # pytest style
+    "FBT",     # boolean trap in tests
+    "SLF",     # private member access in tests
+]
 
 [tool.ruff.format]
 quote-style = "double"

@@ -3,12 +3,11 @@
 from __future__ import annotations
 
 import yaml
-
 from conftest import COMPOSE_FILE
 
 
 def _load_compose() -> dict:
-    with open(COMPOSE_FILE) as f:
+    with COMPOSE_FILE.open() as f:
         return yaml.safe_load(f)
 
 

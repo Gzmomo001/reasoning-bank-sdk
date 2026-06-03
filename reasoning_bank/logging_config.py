@@ -6,6 +6,7 @@ import logging
 import os
 import sys
 from logging.handlers import RotatingFileHandler
+from pathlib import Path
 
 
 def setup_logging(service_name: str) -> None:
@@ -25,9 +26,9 @@ def setup_logging(service_name: str) -> None:
     root_logger.addHandler(console_handler)
 
     if log_dir:
-        os.makedirs(log_dir, exist_ok=True)
+        Path(log_dir).mkdir(parents=True, exist_ok=True)
         file_handler = RotatingFileHandler(
-            os.path.join(log_dir, f"{service_name}.log"),
+            Path(log_dir) / f"{service_name}.log",
             maxBytes=10 * 1024 * 1024,
             backupCount=5,
             encoding="utf-8",
