@@ -449,6 +449,67 @@ cp .env.example .env
 |----------|---------|-------------|
 | `GOOGLE_GENAI_USE_VERTEXAI` | `False` | Set to `True` if using Vertex AI instead of Google AI Studio |
 
+## ChromaDB Storage Schema
+
+The project uses a single ChromaDB collection named `reasoning_bank` with HNSW index (cosine distance). Each record maps from `MemoryItem` to ChromaDB as follows:
+
+```mermaid
+flowchart LR
+    subgraph MI["MemoryItem (dataclass)"]
+        MI_id["id<br/><i>uuid4 hex</i>"]
+        MI_q["query"]
+        MI_s["status"]
+        MI_d["domain"]
+        MI_mi["memory_items<br/><i>list[str]</i>"]
+        MI_ca["created_at<br/><i>datetime</i>"]
+    end
+
+    subgraph CH["Collection reasoning_bank"]
+        CH_id["id"]
+        CH_doc["document"]
+        CH_emb["embedding"]
+        subgraph META["metadata (flat KV)"]
+            M_q["query"]
+            M_s["status"]
+            M_d["domain"]
+            M_ca["created_at"]
+            M_mi["memory_items_json"]
+        end
+    end
+
+    MI_id --> CH_id
+    MI_q --> M_q
+    MI_s --> M_s
+    MI_d --> M_d
+    MI_ca --> M_ca
+    MI_ca --> CH_doc
+    MI_mi -.->|"<i>to_prompt_text()</i>"| CH_doc
+    MI_mi -.->|"<i>\\n\\n.join()</i>"| M_mi
+```
+
+### Docker Network
+
+```mermaid
+flowchart LR
+    subgraph Docker["Docker Network"]
+        direction LR
+        subgraph Host["Host"]
+            H1[":8001"]
+            H2[":8000"]
+            H3[":9000"]
+        end
+        CB["ChromaDB<br/>:8000"]
+        API["API<br/>:8000"]
+        MCP["MCP<br/>:9000"]
+    end
+
+    H1 -- "port map" --> CB
+    H2 -- "port map" --> API
+    H3 -- "port map" --> MCP
+    API -->|"<i>chromadb:8000</i>"| CB
+    MCP -->|"<i>chromadb:8000</i>"| CB
+```
+
 ## Architecture
 
 ```
