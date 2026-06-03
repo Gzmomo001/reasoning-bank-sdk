@@ -4,9 +4,12 @@ on:
   push:
     branches: [main]
     paths:
+      - ".github/workflows/docker-publish.yml"
       - "docker/Dockerfile.api"
       - "docker/Dockerfile.mcp"
+      - "docker/docker-compose*.yml"
       - "docker/docker-entrypoint.sh"
+      - "docker/tests/**"
       - "reasoning_bank/**"
       - "reasoning_bank_api/**"
       - "reasoning_bank_mcp/**"
