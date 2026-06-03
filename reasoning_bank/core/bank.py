@@ -131,7 +131,6 @@ class MemoryBank:
         memory_items: list[str],
         status: str = "success",
         domain: str = "general",
-        template_id: str | None = None,
     ) -> MemoryItem:
         """Directly add a memory item (no LLM induction)."""
         item = MemoryItem(
@@ -140,7 +139,6 @@ class MemoryBank:
             status=status,
             domain=domain,
             memory_items=memory_items,
-            template_id=template_id,
         )
         self._store_with_embeddings([item])
         return item

@@ -53,7 +53,6 @@ class ChromaStorage(StorageBackend):
                 "query": item.query,
                 "status": item.status,
                 "domain": item.domain,
-                "template_id": item.template_id or "",
                 "created_at": item.created_at.isoformat(),
                 "memory_items_json": "\n\n".join(item.memory_items),
             }],
@@ -75,7 +74,6 @@ class ChromaStorage(StorageBackend):
                 "query": item.query,
                 "status": item.status,
                 "domain": item.domain,
-                "template_id": item.template_id or "",
                 "created_at": item.created_at.isoformat(),
                 "memory_items_json": "\n\n".join(item.memory_items),
             })
@@ -134,6 +132,5 @@ class ChromaStorage(StorageBackend):
             status=meta.get("status", ""),
             domain=meta.get("domain", "web"),
             memory_items=memory_items,
-            template_id=meta.get("template_id") or None,
             created_at=created_at,
         )

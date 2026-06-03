@@ -16,7 +16,6 @@ class MemoryItem:
     status: str  # "success" | "fail"
     domain: str  # "web" | "coding" | "general"
     memory_items: list[str]
-    template_id: str | None = None
     id: str = field(default_factory=lambda: uuid.uuid4().hex)
     created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
 
@@ -32,7 +31,6 @@ class MemoryItem:
             "status": self.status,
             "domain": self.domain,
             "memory_items": self.memory_items,
-            "template_id": self.template_id,
             "created_at": self.created_at.isoformat(),
         }
 

@@ -100,8 +100,7 @@ Add a memory item directly (no LLM needed).
   "query": "Search for products",
   "memory_items": ["Always use the search bar in the top navigation"],
   "status": "success",
-  "domain": "general",
-  "template_id": null
+  "domain": "general"
 }
 
 // Response — 201 Created
@@ -113,7 +112,6 @@ Add a memory item directly (no LLM needed).
     "status": "success",
     "domain": "general",
     "memory_items": ["Always use the search bar in the top navigation"],
-    "template_id": null,
     "created_at": "2025-01-01T00:00:00+00:00"
   },
   "meta": {}
@@ -135,7 +133,6 @@ List all stored memories.
       "status": "success",
       "domain": "web",
       "memory_items": ["..."],
-      "template_id": null,
       "created_at": "..."
     }
   ],

@@ -85,7 +85,7 @@ def test_memory_item_to_prompt_text():
 def test_memory_item_roundtrip():
     item = MemoryItem(
         task_id="t1", query="q1", status="success", domain="coding",
-        memory_items=["mem1"], template_id="tpl-1",
+        memory_items=["mem1"],
     )
     restored = MemoryItem.from_dict(item.to_dict())
     assert restored.task_id == "t1"

@@ -29,7 +29,6 @@ class MemoryItemSchema(BaseModel):
     status: str
     domain: str
     memory_items: list[str]
-    template_id: str | None
     created_at: datetime
 
 
@@ -90,7 +89,6 @@ class AddRequest(BaseModel):
     memory_items: list[str]
     status: str = "success"
     domain: str = "general"
-    template_id: str | None = None
 
 
 class SearchRequest(BaseModel):
@@ -218,7 +216,6 @@ def create_item(req: AddRequest) -> CreateItemResponse:
         memory_items=req.memory_items,
         status=req.status,
         domain=req.domain,
-        template_id=req.template_id,
     )
     return CreateItemResponse(data=MemoryItemSchema(**item.to_dict()))
 
