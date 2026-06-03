@@ -1,17 +1,39 @@
-#!/usr/bin/env bash
-# Pre-commit hook: run ruff lint and format checks on staged Python files.
-set -euo pipefail
+#!/usr/bin/env python3
+"""Pre-commit hook: run ruff lint and format checks on staged Python files."""
 
-# Find staged .py files
-mapfile -t staged < <(git diff --cached --name-only --diff-filter=ACM -- '*.py')
-if [ ${#staged[@]} -eq 0 ]; then
-    exit 0
-fi
+import subprocess
+import sys
 
-echo "🔍 Running ruff check..."
-uv run ruff check "${staged[@]}"
 
-echo "🎨 Running ruff format check..."
-uv run ruff format --check "${staged[@]}"
+def get_staged_py_files() -> list[str]:
+    result = subprocess.run(
+        ["git", "diff", "--cached", "--name-only", "--diff-filter=ACM", "--", "*.py"],
+        capture_output=True,
+        text=True,
+    )
+    if result.returncode != 0:
+        print(f"Failed to get staged files: {result.stderr}", file=sys.stderr)
+        sys.exit(1)
+    return [f for f in result.stdout.splitlines() if f]
 
-echo "✅ All ruff checks passed."
+
+def main() -> None:
+    files = get_staged_py_files()
+    if not files:
+        return
+
+    print("Running ruff check...")
+    r = subprocess.run(["uv", "run", "ruff", "check"] + files, text=True)
+    if r.returncode != 0:
+        sys.exit(r.returncode)
+
+    print("Running ruff format check...")
+    r = subprocess.run(["uv", "run", "ruff", "format", "--check"] + files, text=True)
+    if r.returncode != 0:
+        sys.exit(r.returncode)
+
+    print("All ruff checks passed.")
+
+
+if __name__ == "__main__":
+    main()

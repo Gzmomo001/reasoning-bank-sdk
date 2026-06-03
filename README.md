@@ -17,6 +17,7 @@ Persistent agent memory with induction, retrieval, and scaling. ReasoningBank le
 
 ```bash
 uv sync
+git config core.hooksPath .githooks
 ```
 
 Requires Python >= 3.12.
