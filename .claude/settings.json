@@ -3,12 +3,13 @@
     "feature-dev@claude-plugins-official": true
   },
   "hooks": {
-    "CwdChanged": [
+    "PostToolUse": [
       {
+        "matcher": "EnterWorktree",
         "hooks": [
           {
             "type": "command",
-            "command": "case \"$PWD\" in */.claude/worktrees/*) [ -d .venv ] && exit 0; ORIG=\"${PWD%/.claude/worktrees/*}\"; uv sync 2>&1; [ -f \"$ORIG/.env\" ] && [ ! -e .env ] && ln -s \"$ORIG/.env\" .env ;; esac"
+            "command": "[ -d .venv ] && exit 0; ORIG=\"${PWD%/.claude/worktrees/*}\"; uv sync 2>&1; [ -f \"$ORIG/.env\" ] && [ ! -e .env ] && ln -s \"$ORIG/.env\" .env"
           }
         ]
       }
