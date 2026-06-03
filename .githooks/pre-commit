@@ -1,0 +1,17 @@
+#!/usr/bin/env bash
+# Pre-commit hook: run ruff lint and format checks on staged Python files.
+set -euo pipefail
+
+# Find staged .py files
+mapfile -t staged < <(git diff --cached --name-only --diff-filter=ACM -- '*.py')
+if [ ${#staged[@]} -eq 0 ]; then
+    exit 0
+fi
+
+echo "🔍 Running ruff check..."
+uv run ruff check "${staged[@]}"
+
+echo "🎨 Running ruff format check..."
+uv run ruff format --check "${staged[@]}"
+
+echo "✅ All ruff checks passed."

@@ -5,7 +5,10 @@ from __future__ import annotations
 import logging
 import os
 from abc import ABC, abstractmethod
-from typing import Callable
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
 logger = logging.getLogger(__name__)
 
@@ -33,8 +36,8 @@ class GeminiEmbedding(EmbeddingProvider):
         self._client = self._init_client()
 
     def _init_client(self):
-        from google import genai
-        from google.genai.types import HttpOptions
+        from google import genai  # noqa: PLC0415
+        from google.genai.types import HttpOptions  # noqa: PLC0415
 
         api_key = os.environ.get("EMBEDDING_API_KEY", "") or os.environ.get("LLM_API_KEY", "")
         use_vertexai = os.environ.get("GOOGLE_GENAI_USE_VERTEXAI", "").lower() in ("true", "1", "yes")
@@ -44,7 +47,7 @@ class GeminiEmbedding(EmbeddingProvider):
         return genai.Client(vertexai=True, http_options=HttpOptions(api_version="v1"))
 
     def embed(self, texts: list[str]) -> list[list[float]]:
-        from google.genai.types import EmbedContentConfig
+        from google.genai.types import EmbedContentConfig  # noqa: PLC0415
 
         response = self._client.models.embed_content(
             model=self._model,
@@ -75,7 +78,7 @@ class OpenAIEmbedding(EmbeddingProvider):
         self._dim = 1536
 
     def embed(self, texts: list[str]) -> list[list[float]]:
-        from openai import OpenAI
+        from openai import OpenAI  # noqa: PLC0415
 
         kwargs: dict = {}
         if self._api_key:

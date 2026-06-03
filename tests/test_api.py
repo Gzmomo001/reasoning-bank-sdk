@@ -3,8 +3,8 @@
 import pytest
 from fastapi.testclient import TestClient
 
-from reasoning_bank_api.app import app
 import reasoning_bank_api.routes as routes_mod
+from reasoning_bank_api.app import app
 
 
 @pytest.fixture
@@ -16,9 +16,14 @@ def client(bank):
 
 
 def test_create_and_count(client):
-    resp = client.post("/v1/memory/items", json={
-        "query": "q1", "memory_items": ["m1"], "status": "success",
-    })
+    resp = client.post(
+        "/v1/memory/items",
+        json={
+            "query": "q1",
+            "memory_items": ["m1"],
+            "status": "success",
+        },
+    )
     assert resp.status_code == 201
     body = resp.json()
     assert "data" in body
@@ -27,21 +32,33 @@ def test_create_and_count(client):
 
 
 def test_list(client):
-    client.post("/v1/memory/items", json={
-        "query": "q1", "memory_items": ["m1"],
-    })
-    client.post("/v1/memory/items", json={
-        "query": "q2", "memory_items": ["m2"],
-    })
+    client.post(
+        "/v1/memory/items",
+        json={
+            "query": "q1",
+            "memory_items": ["m1"],
+        },
+    )
+    client.post(
+        "/v1/memory/items",
+        json={
+            "query": "q2",
+            "memory_items": ["m2"],
+        },
+    )
     body = client.get("/v1/memory/items").json()
     assert len(body["data"]) == 2
     assert body["meta"]["total"] == 2
 
 
 def test_delete(client):
-    resp = client.post("/v1/memory/items", json={
-        "query": "q1", "memory_items": ["m1"],
-    })
+    resp = client.post(
+        "/v1/memory/items",
+        json={
+            "query": "q1",
+            "memory_items": ["m1"],
+        },
+    )
     item_id = resp.json()["data"]["id"]
     resp = client.delete(f"/v1/memory/items/{item_id}")
     assert resp.status_code == 200
@@ -50,9 +67,13 @@ def test_delete(client):
 
 
 def test_search_get(client):
-    client.post("/v1/memory/items", json={
-        "query": "fix login", "memory_items": ["use button"],
-    })
+    client.post(
+        "/v1/memory/items",
+        json={
+            "query": "fix login",
+            "memory_items": ["use button"],
+        },
+    )
     resp = client.get("/v1/memory/items/search", params={"query": "fix login", "top_k": 1})
     assert resp.status_code == 200
     body = resp.json()
@@ -61,9 +82,13 @@ def test_search_get(client):
 
 
 def test_search_post(client):
-    client.post("/v1/memory/items", json={
-        "query": "fix login", "memory_items": ["use button"],
-    })
+    client.post(
+        "/v1/memory/items",
+        json={
+            "query": "fix login",
+            "memory_items": ["use button"],
+        },
+    )
     resp = client.post("/v1/memory/items/search", json={"query": "fix login", "top_k": 1})
     assert resp.status_code == 200
     body = resp.json()
@@ -74,9 +99,13 @@ def test_search_post(client):
 def test_response_format(client):
     """Verify unified ApiResponse wrapper on all endpoints."""
     # POST /items → 201 with data
-    resp = client.post("/v1/memory/items", json={
-        "query": "q1", "memory_items": ["m1"],
-    })
+    resp = client.post(
+        "/v1/memory/items",
+        json={
+            "query": "q1",
+            "memory_items": ["m1"],
+        },
+    )
     assert resp.status_code == 201
     body = resp.json()
     assert "data" in body

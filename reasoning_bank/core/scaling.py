@@ -3,10 +3,13 @@
 from __future__ import annotations
 
 import logging
+from typing import TYPE_CHECKING
 
 from reasoning_bank.core.memory_item import MemoryItem
 from reasoning_bank.core.prompts import get_scaling_prompt
-from reasoning_bank.llm.base import LLMClient
+
+if TYPE_CHECKING:
+    from reasoning_bank.llm.base import LLMClient
 
 logger = logging.getLogger(__name__)
 

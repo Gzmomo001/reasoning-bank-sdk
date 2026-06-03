@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import uuid
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 
 @dataclass
@@ -16,7 +16,7 @@ class MemoryItem:
     domain: str  # "web" | "coding" | "general"
     memory_items: list[str]
     id: str = field(default_factory=lambda: uuid.uuid4().hex)
-    created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
 
     def to_prompt_text(self) -> str:
         """Format as injectable text for agent prompt."""

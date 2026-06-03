@@ -48,6 +48,36 @@ packages = ["reasoning_bank", "reasoning_bank_api", "reasoning_bank_mcp"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 
+[tool.ruff]
+target-version = "py312"
+line-length = 120
+
+[tool.ruff.lint]
+select = ["ALL"]
+ignore = [
+    "D",       # pydocstyle - docstring style (too noisy)
+    "ANN",     # flake8-annotations - type annotations (separate effort)
+    "CPY001",  # missing copyright notice
+    "INP001",  # implicit namespace package
+    "DOC",     # docstring formatting rules
+    "COM812",  # trailing comma (conflicts with ruff formatter)
+    "ISC001",  # implicitly concatenated string literals (conflicts with ruff formatter)
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = [
+    "S101",    # assert in tests is fine
+    "PLR2004", # magic numbers in tests are fine
+    "ARG",     # unused arguments in test fixtures
+    "PT",      # pytest style (some tests use assert directly)
+    "S",       # security issues (hardcoded values etc.)
+    "FBT",     # boolean trap in tests
+    "SLF",     # private member access in tests
+]
+
+[tool.ruff.format]
+quote-style = "double"
+
 [dependency-groups]
 dev = [
     "pytest>=9.0.3",

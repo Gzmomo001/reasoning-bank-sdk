@@ -5,8 +5,7 @@ from __future__ import annotations
 import json
 import logging
 import math
-import os
-from typing import Sequence
+from pathlib import Path
 
 from reasoning_bank.core.memory_item import MemoryItem
 from reasoning_bank.storage.base import StorageBackend
@@ -22,22 +21,22 @@ class JsonlStorage(StorageBackend):
     """
 
     def __init__(self, storage_path: str = "./memories") -> None:
-        self._data_path = os.path.join(storage_path, "memories.jsonl")
-        self._embed_path = os.path.join(storage_path, "embeddings.jsonl")
-        os.makedirs(storage_path, exist_ok=True)
+        self._dir = Path(storage_path)
+        self._data_path = self._dir / "memories.jsonl"
+        self._embed_path = self._dir / "embeddings.jsonl"
+        self._dir.mkdir(parents=True, exist_ok=True)
         # Touch files if they don't exist
         for p in (self._data_path, self._embed_path):
-            if not os.path.exists(p):
-                open(p, "w").close()
+            if not p.exists():
+                p.touch()
 
     def add(self, item: MemoryItem) -> None:
-        with open(self._data_path, "a") as f:
+        with self._data_path.open("a") as f:
             f.write(json.dumps(item.to_dict()) + "\n")
 
     def add_batch(self, items: list[MemoryItem]) -> None:
-        with open(self._data_path, "a") as f:
-            for item in items:
-                f.write(json.dumps(item.to_dict()) + "\n")
+        with self._data_path.open("a") as f:
+            f.writelines(json.dumps(item.to_dict()) + "\n" for item in items)
 
     def retrieve(self, query_embedding: list[float], top_k: int) -> list[MemoryItem]:
         all_items = self.list_all()
@@ -60,17 +59,16 @@ class JsonlStorage(StorageBackend):
     def delete(self, item_id: str) -> None:
         items = self.list_all()
         remaining = [item for item in items if item.id != item_id]
-        with open(self._data_path, "w") as f:
-            for item in remaining:
-                f.write(json.dumps(item.to_dict()) + "\n")
+        with self._data_path.open("w") as f:
+            f.writelines(json.dumps(item.to_dict()) + "\n" for item in remaining)
 
     def list_all(self) -> list[MemoryItem]:
         items: list[MemoryItem] = []
-        if not os.path.exists(self._data_path):
+        if not self._data_path.exists():
             return items
-        with open(self._data_path, "r") as f:
-            for line in f:
-                line = line.strip()
+        with self._data_path.open() as f:
+            for raw_line in f:
+                line = raw_line.strip()
                 if not line:
                     continue
                 try:
@@ -84,16 +82,16 @@ class JsonlStorage(StorageBackend):
 
     def store_embedding(self, item_id: str, embedding: list[float]) -> None:
         record = {"id": item_id, "embedding": embedding}
-        with open(self._embed_path, "a") as f:
+        with self._embed_path.open("a") as f:
             f.write(json.dumps(record) + "\n")
 
     def _load_embeddings(self) -> dict[str, list[float]]:
         result: dict[str, list[float]] = {}
-        if not os.path.exists(self._embed_path):
+        if not self._embed_path.exists():
             return result
-        with open(self._embed_path, "r") as f:
-            for line in f:
-                line = line.strip()
+        with self._embed_path.open() as f:
+            for raw_line in f:
+                line = raw_line.strip()
                 if not line:
                     continue
                 try:
@@ -105,7 +103,7 @@ class JsonlStorage(StorageBackend):
 
     @staticmethod
     def _cosine_similarity(a: list[float], b: list[float]) -> float:
-        dot = sum(x * y for x, y in zip(a, b))
+        dot = sum(x * y for x, y in zip(a, b, strict=False))
         norm_a = math.sqrt(sum(x * x for x in a))
         norm_b = math.sqrt(sum(x * x for x in b))
         if norm_a == 0 or norm_b == 0:

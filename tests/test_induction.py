@@ -1,6 +1,6 @@
 """Tests for single-trajectory memory induction — real LLM."""
 
-from reasoning_bank.core.induction import induce, _parse_memory_items
+from reasoning_bank.core.induction import _parse_memory_items, induce
 
 
 def test_induce_success(llm_with_retry):

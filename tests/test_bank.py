@@ -74,7 +74,9 @@ def test_induce_requires_llm(tmp_path):
 
 def test_memory_item_to_prompt_text():
     item = MemoryItem(
-        query="q1", status="success", domain="web",
+        query="q1",
+        status="success",
+        domain="web",
         memory_items=["item1", "item2"],
     )
     assert item.to_prompt_text() == "item1\n\nitem2"
@@ -82,7 +84,9 @@ def test_memory_item_to_prompt_text():
 
 def test_memory_item_roundtrip():
     item = MemoryItem(
-        query="q1", status="success", domain="coding",
+        query="q1",
+        status="success",
+        domain="coding",
         memory_items=["mem1"],
     )
     restored = MemoryItem.from_dict(item.to_dict())

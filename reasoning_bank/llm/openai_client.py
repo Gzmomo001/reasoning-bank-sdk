@@ -21,7 +21,7 @@ class OpenAIClient(LLMClient):
         self._base_url = base_url or os.environ.get("LLM_API_BASE_URL", "") or None
 
     def chat(self, messages: list[dict], system: str | None = None) -> str:
-        from openai import OpenAI
+        from openai import OpenAI  # noqa: PLC0415
 
         kwargs: dict = {}
         if self._api_key:

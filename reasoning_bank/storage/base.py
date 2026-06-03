@@ -3,8 +3,10 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
+from typing import TYPE_CHECKING
 
-from reasoning_bank.core.memory_item import MemoryItem
+if TYPE_CHECKING:
+    from reasoning_bank.core.memory_item import MemoryItem
 
 
 class StorageBackend(ABC):

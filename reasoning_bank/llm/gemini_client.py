@@ -20,8 +20,8 @@ class GeminiClient(LLMClient):
         self._client = self._init_client()
 
     def _init_client(self):
-        from google import genai
-        from google.genai.types import HttpOptions
+        from google import genai  # noqa: PLC0415
+        from google.genai.types import HttpOptions  # noqa: PLC0415
 
         provider = os.environ.get("LLM_PROVIDER", "")
         if provider == "google_ai" and self._api_key:
@@ -29,7 +29,7 @@ class GeminiClient(LLMClient):
         return genai.Client(vertexai=True, http_options=HttpOptions(api_version="v1"))
 
     def chat(self, messages: list[dict], system: str | None = None) -> str:
-        from google.genai.types import GenerateContentConfig
+        from google.genai.types import GenerateContentConfig  # noqa: PLC0415
 
         # Build content: prepend system instruction to user messages
         # since not all models (e.g. Gemma) support systemInstruction

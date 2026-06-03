@@ -1,11 +1,13 @@
 """Tests for multi-trajectory scaling induction — real LLM."""
 
-from reasoning_bank.core.scaling import induce_scaling, _parse_memory_items
+from reasoning_bank.core.scaling import _parse_memory_items, induce_scaling
 
 
 def test_scaling_basic(llm_with_retry):
     items = induce_scaling(
-        llm_with_retry, "t1", "find item",
+        llm_with_retry,
+        "t1",
+        "find item",
         [
             {"trajectory": "success traj...", "status": "success"},
             {"trajectory": "fail traj...", "status": "fail"},
@@ -18,7 +20,9 @@ def test_scaling_basic(llm_with_retry):
 
 def test_scaling_multiple_items(llm_with_retry):
     items = induce_scaling(
-        llm_with_retry, "t2", "search",
+        llm_with_retry,
+        "t2",
+        "search",
         [{"trajectory": "traj", "status": "success"}],
         "coding",
     )

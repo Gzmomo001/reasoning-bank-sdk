@@ -3,15 +3,18 @@
 from __future__ import annotations
 
 import logging
+from typing import TYPE_CHECKING
 
 from reasoning_bank.core.memory_item import MemoryItem
 from reasoning_bank.core.prompts import get_system_prompt
-from reasoning_bank.llm.base import LLMClient
+
+if TYPE_CHECKING:
+    from reasoning_bank.llm.base import LLMClient
 
 logger = logging.getLogger(__name__)
 
 
-def induce(
+def induce(  # noqa: PLR0913
     llm: LLMClient,
     query: str,
     trajectory: str,
@@ -43,7 +46,7 @@ def induce(
     memory_texts = _parse_memory_items(raw)
 
     items = []
-    for i, text in enumerate(memory_texts):
+    for _i, text in enumerate(memory_texts):
         item = MemoryItem(
             query=query,
             status=status,

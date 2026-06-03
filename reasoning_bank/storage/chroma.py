@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import logging
 import os
-from typing import Sequence
 
 from reasoning_bank.core.memory_item import MemoryItem
 from reasoning_bank.storage.base import StorageBackend
@@ -33,28 +32,29 @@ class ChromaStorage(StorageBackend):
         host = os.environ.get("CHROMA_HOST")
         port = os.environ.get("CHROMA_PORT")
         if host and port:
-            import chromadb
+            import chromadb  # noqa: PLC0415
 
             logger.info("Connecting to ChromaDB at %s:%s", host, port)
             return chromadb.HttpClient(host=host, port=int(port))
-        else:
-            import chromadb
+        import chromadb  # noqa: PLC0415
 
-            logger.info("Using local ChromaDB at %s", self._storage_path)
-            return chromadb.PersistentClient(path=self._storage_path)
+        logger.info("Using local ChromaDB at %s", self._storage_path)
+        return chromadb.PersistentClient(path=self._storage_path)
 
     def add(self, item: MemoryItem, embedding: list[float] | None = None) -> None:
         doc = item.to_prompt_text()
         kwargs: dict = {
             "ids": [item.id],
             "documents": [doc],
-            "metadatas": [{
-                "query": item.query,
-                "status": item.status,
-                "domain": item.domain,
-                "created_at": item.created_at.isoformat(),
-                "memory_items_json": "\n\n".join(item.memory_items),
-            }],
+            "metadatas": [
+                {
+                    "query": item.query,
+                    "status": item.status,
+                    "domain": item.domain,
+                    "created_at": item.created_at.isoformat(),
+                    "memory_items_json": "\n\n".join(item.memory_items),
+                }
+            ],
         }
         if embedding is not None:
             kwargs["embeddings"] = [embedding]
@@ -68,13 +68,15 @@ class ChromaStorage(StorageBackend):
             doc = item.to_prompt_text()
             ids.append(item.id)
             docs.append(doc)
-            metas.append({
-                "query": item.query,
-                "status": item.status,
-                "domain": item.domain,
-                "created_at": item.created_at.isoformat(),
-                "memory_items_json": "\n\n".join(item.memory_items),
-            })
+            metas.append(
+                {
+                    "query": item.query,
+                    "status": item.status,
+                    "domain": item.domain,
+                    "created_at": item.created_at.isoformat(),
+                    "memory_items_json": "\n\n".join(item.memory_items),
+                }
+            )
         kwargs: dict = {"ids": ids, "documents": docs, "metadatas": metas}
         if embeddings is not None:
             kwargs["embeddings"] = embeddings
@@ -105,18 +107,21 @@ class ChromaStorage(StorageBackend):
         if not results or not results.get("metadatas"):
             return []
         ids = results.get("ids", [])
-        return [self._meta_to_item(m, ids[i] if i < len(ids) else "") for i, m in enumerate(results["metadatas"])]
+        return [
+            self._meta_to_item(m, ids[i] if i < len(ids) else "")
+            for i, m in enumerate(results["metadatas"])
+        ]
 
     def count(self) -> int:
         return self._collection.count()
 
     @staticmethod
     def _meta_to_item(meta: dict, item_id: str = "") -> MemoryItem:
-        from datetime import datetime
+        from datetime import datetime  # noqa: PLC0415
 
-        memory_text = meta.pop("memory_items_json", "")
+        memory_text = meta.get("memory_items_json", "")
         memory_items = memory_text.split("\n\n") if memory_text else []
-        created_at = meta.pop("created_at", None)
+        created_at = meta.get("created_at")
         if isinstance(created_at, str):
             created_at = datetime.fromisoformat(created_at)
 

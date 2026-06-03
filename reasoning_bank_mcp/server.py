@@ -3,9 +3,9 @@
 from __future__ import annotations
 
 import argparse
-import asyncio
 import json
 import os
+from typing import TYPE_CHECKING
 
 from mcp.server.fastmcp import FastMCP
 
@@ -14,7 +14,9 @@ from reasoning_bank.logging_config import setup_logging
 from reasoning_bank.llm.anthropic_client import AnthropicClient
 from reasoning_bank.llm.gemini_client import GeminiClient
 from reasoning_bank.llm.openai_client import OpenAIClient
-from reasoning_bank.llm.base import LLMClient
+
+if TYPE_CHECKING:
+    from reasoning_bank.llm.base import LLMClient
 
 mcp = FastMCP("ReasoningBank")
 
@@ -23,6 +25,7 @@ mcp = FastMCP("ReasoningBank")
 # Bank initialization from environment
 # ---------------------------------------------------------------------------
 
+
 def _get_llm() -> LLMClient | None:
     provider = os.environ.get("LLM_PROVIDER", "")
     model = os.environ.get("LLM_MODEL", "")
@@ -30,17 +33,16 @@ def _get_llm() -> LLMClient | None:
         return None
     if provider == "anthropic":
         return AnthropicClient(model=model)
-    elif provider in ("vertexai", "google_ai"):
+    if provider in ("vertexai", "google_ai"):
         return GeminiClient(model=model)
-    else:
-        return OpenAIClient(model=model)
+    return OpenAIClient(model=model)
 
 
 _bank_instance: MemoryBank | None = None
 
 
 def _get_or_create_bank() -> MemoryBank:
-    global _bank_instance
+    global _bank_instance  # noqa: PLW0603
     if _bank_instance is None:
         _bank_instance = MemoryBank(
             storage=os.environ.get("STORAGE", "chroma"),
@@ -59,6 +61,7 @@ def _bank() -> MemoryBank:
 # ---------------------------------------------------------------------------
 # MCP Tools
 # ---------------------------------------------------------------------------
+
 
 @mcp.tool()
 def reasoning_bank_retrieve(query: str, top_k: int = 3) -> str:
@@ -140,6 +143,7 @@ def reasoning_bank_count() -> str:
 # MCP Resources
 # ---------------------------------------------------------------------------
 
+
 @mcp.resource("reasoning-bank://stats")
 def stats() -> str:
     """Return ReasoningBank statistics."""
@@ -149,6 +153,7 @@ def stats() -> str:
 # ---------------------------------------------------------------------------
 # Entry point
 # ---------------------------------------------------------------------------
+
 
 def main():
     parser = argparse.ArgumentParser(description="ReasoningBank MCP Server")

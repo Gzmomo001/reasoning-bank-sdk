@@ -4,10 +4,9 @@ from __future__ import annotations
 
 import logging
 import os
-from typing import Union
+from typing import TYPE_CHECKING
 
 from reasoning_bank.core.embedding import (
-    CustomEmbedding,
     EmbeddingProvider,
     GeminiEmbedding,
     OpenAIEmbedding,
@@ -16,13 +15,12 @@ from reasoning_bank.core.induction import induce
 from reasoning_bank.core.memory_item import MemoryItem
 from reasoning_bank.core.rate_limiter import RateLimiter, get_embedding_rpm, get_llm_rpm
 from reasoning_bank.core.scaling import induce_scaling
-from reasoning_bank.llm.anthropic_client import AnthropicClient
-from reasoning_bank.llm.base import LLMClient
-from reasoning_bank.llm.gemini_client import GeminiClient
-from reasoning_bank.llm.openai_client import OpenAIClient
-from reasoning_bank.storage.base import StorageBackend
 from reasoning_bank.storage.chroma import ChromaStorage
 from reasoning_bank.storage.jsonl import JsonlStorage
+
+if TYPE_CHECKING:
+    from reasoning_bank.llm.base import LLMClient
+    from reasoning_bank.storage.base import StorageBackend
 
 logger = logging.getLogger(__name__)
 
@@ -61,7 +59,7 @@ class MemoryBank:
         self,
         storage: str = "chroma",
         storage_path: str = "./memories",
-        embedding_provider: Union[str, EmbeddingProvider] = "gemini",
+        embedding_provider: str | EmbeddingProvider = "gemini",
         embedding_model: str | None = None,
         llm_client: LLMClient | None = None,
     ) -> None:
@@ -162,29 +160,28 @@ class MemoryBank:
 
         if isinstance(self._storage, JsonlStorage):
             self._storage.add_batch(items)
-            for item, emb in zip(items, embeddings):
+            for item, emb in zip(items, embeddings, strict=False):
                 self._storage.store_embedding(item.id, emb)
         else:
             self._storage.add_batch(items, embeddings=embeddings)
 
     def _require_llm(self) -> None:
         if self._llm is None:
-            raise ValueError(
-                "An LLM client is required for induction. "
-                "Pass llm_client= to MemoryBank constructor."
-            )
+            msg = "An LLM client is required for induction. Pass llm_client= to MemoryBank constructor."
+            raise ValueError(msg)
 
     @staticmethod
     def _init_storage(backend: str, path: str) -> StorageBackend:
         if backend == "chroma":
             return ChromaStorage(storage_path=path)
-        elif backend == "jsonl":
+        if backend == "jsonl":
             return JsonlStorage(storage_path=path)
-        raise ValueError(f"Unknown storage backend: {backend!r}. Use 'chroma' or 'jsonl'.")
+        msg = f"Unknown storage backend: {backend!r}. Use 'chroma' or 'jsonl'."
+        raise ValueError(msg)
 
     @staticmethod
     def _init_embedding(
-        provider: Union[str, EmbeddingProvider],
+        provider: str | EmbeddingProvider,
         model: str | None,
     ) -> EmbeddingProvider:
         if isinstance(provider, EmbeddingProvider):
@@ -192,10 +189,11 @@ class MemoryBank:
 
         cls = _EMBEDDING_MAP.get(provider)
         if cls is None:
-            raise ValueError(
+            msg = (
                 f"Unknown embedding provider: {provider!r}. "
                 f"Use one of: {', '.join(_EMBEDDING_MAP)} or pass an EmbeddingProvider instance."
             )
+            raise ValueError(msg)
         kwargs: dict = {}
         if model:
             kwargs["model"] = model
