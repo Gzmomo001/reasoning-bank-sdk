@@ -15,6 +15,7 @@ on:
       - "reasoning_bank_mcp/**"
       - "pyproject.toml"
       - "uv.lock"
+  workflow_dispatch:
 
 env:
   REGISTRY: ghcr.io
