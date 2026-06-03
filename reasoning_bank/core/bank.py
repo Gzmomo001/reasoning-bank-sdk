@@ -181,12 +181,10 @@ class MemoryBank:
         await self._embedding_limiter.wait()
         embeddings = await self._embedding.embed(texts)
 
+        await self._storage.add_batch(items, embeddings=embeddings)
         if isinstance(self._storage, JsonlStorage):
-            await self._storage.add_batch(items)
             for item, emb in zip(items, embeddings, strict=False):
                 await self._storage.store_embedding(item.id, emb)
-        else:
-            await self._storage.add_batch(items, embeddings=embeddings)
 
     def _require_llm(self) -> None:
         if self._llm is None:

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import os
 from typing import TYPE_CHECKING, Annotated
 
@@ -153,12 +154,15 @@ async def _create_bank() -> MemoryBank:
 
 
 _bank: MemoryBank | None = None
+_bank_lock = asyncio.Lock()
 
 
 async def get_bank() -> MemoryBank:
     global _bank  # noqa: PLW0603
     if _bank is None:
-        _bank = await _create_bank()
+        async with _bank_lock:
+            if _bank is None:
+                _bank = await _create_bank()
     return _bank
 
 

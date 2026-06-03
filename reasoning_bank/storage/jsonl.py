@@ -36,7 +36,7 @@ class JsonlStorage(StorageBackend):
         async with aiofiles.open(self._data_path, "a") as f:
             await f.write(json.dumps(item.to_dict()) + "\n")
 
-    async def add_batch(self, items: list[MemoryItem]) -> None:
+    async def add_batch(self, items: list[MemoryItem], *, embeddings: list[list[float]] | None = None) -> None:  # noqa: ARG002
         import aiofiles  # noqa: PLC0415
 
         async with aiofiles.open(self._data_path, "a") as f:

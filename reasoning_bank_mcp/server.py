@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import asyncio
 import json
 import os
 from pathlib import Path
@@ -41,18 +42,21 @@ def _get_llm() -> LLMClient | None:
 
 
 _bank_instance: MemoryBank | None = None
+_bank_lock = asyncio.Lock()
 
 
 async def _get_or_create_bank() -> MemoryBank:
     global _bank_instance  # noqa: PLW0603
     if _bank_instance is None:
-        _bank_instance = await MemoryBank.create(
-            storage=os.environ.get("STORAGE", "chroma"),
-            storage_path=os.environ.get("STORAGE_PATH", "./memories"),
-            embedding_provider=os.environ.get("EMBEDDING_PROVIDER", "gemini"),
-            embedding_model=os.environ.get("EMBEDDING_MODEL"),
-            llm_client=_get_llm(),
-        )
+        async with _bank_lock:
+            if _bank_instance is None:
+                _bank_instance = await MemoryBank.create(
+                    storage=os.environ.get("STORAGE", "chroma"),
+                    storage_path=os.environ.get("STORAGE_PATH", "./memories"),
+                    embedding_provider=os.environ.get("EMBEDDING_PROVIDER", "gemini"),
+                    embedding_model=os.environ.get("EMBEDDING_MODEL"),
+                    llm_client=_get_llm(),
+                )
     return _bank_instance
 
 
