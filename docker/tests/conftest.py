@@ -30,6 +30,8 @@ TESTS_DIR = Path(__file__).resolve().parent
 DOCKER_DIR = TESTS_DIR.parent
 SDK_ROOT = DOCKER_DIR.parent
 COMPOSE_FILE = DOCKER_DIR / "docker-compose.yml"
+LOCAL_COMPOSE_FILE = DOCKER_DIR / "docker-compose.local.yml"
+COMPOSE_FILES = ["-f", str(COMPOSE_FILE), "-f", str(LOCAL_COMPOSE_FILE)]
 
 
 def _get_project_name() -> str:
@@ -42,7 +44,7 @@ def _get_project_name() -> str:
 
 
 def compose_up(project: str, extra_env: dict | None = None) -> subprocess.CompletedProcess:
-    cmd = ["docker", "compose", "-p", project, "-f", str(COMPOSE_FILE), "up", "--wait", "--build", "-d"]
+    cmd = ["docker", "compose", "-p", project, *COMPOSE_FILES, "up", "--wait", "--build", "-d"]
     env = os.environ.copy()
     if extra_env:
         env.update(extra_env)
@@ -51,7 +53,7 @@ def compose_up(project: str, extra_env: dict | None = None) -> subprocess.Comple
 
 def compose_down(project: str) -> subprocess.CompletedProcess:
     return subprocess.run(  # noqa: PLW1510
-        ["docker", "compose", "-p", project, "-f", str(COMPOSE_FILE), "down", "--volumes", "--remove-orphans"],
+        ["docker", "compose", "-p", project, *COMPOSE_FILES, "down", "--volumes", "--remove-orphans"],
         capture_output=True,
         text=True,
         timeout=60,
@@ -60,7 +62,7 @@ def compose_down(project: str) -> subprocess.CompletedProcess:
 
 def compose_restart(project: str, *services: str) -> subprocess.CompletedProcess:
     return subprocess.run(  # noqa: PLW1510
-        ["docker", "compose", "-p", project, "-f", str(COMPOSE_FILE), "restart", *services],
+        ["docker", "compose", "-p", project, *COMPOSE_FILES, "restart", *services],
         capture_output=True,
         text=True,
         timeout=120,

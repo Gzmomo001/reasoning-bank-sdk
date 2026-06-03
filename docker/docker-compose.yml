@@ -23,9 +23,7 @@ services:
       - reasoning-bank
 
   api:
-    build:
-      context: ..
-      dockerfile: docker/Dockerfile.api
+    image: ghcr.io/gzmomo001/reasoning-bank-sdk-api:latest
     ports:
       - "8000:8000"
     depends_on:
@@ -63,9 +61,7 @@ services:
       - reasoning-bank
 
   mcp:
-    build:
-      context: ..
-      dockerfile: docker/Dockerfile.mcp
+    image: ghcr.io/gzmomo001/reasoning-bank-sdk-mcp:latest
     ports:
       - "9000:9000"
     depends_on:

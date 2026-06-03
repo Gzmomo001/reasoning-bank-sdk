@@ -3,11 +3,16 @@
 from __future__ import annotations
 
 import yaml
-from conftest import COMPOSE_FILE
+from conftest import COMPOSE_FILE, LOCAL_COMPOSE_FILE
 
 
 def _load_compose() -> dict:
     with COMPOSE_FILE.open() as f:
+        return yaml.safe_load(f)
+
+
+def _load_local_compose() -> dict:
+    with LOCAL_COMPOSE_FILE.open() as f:
         return yaml.safe_load(f)
 
 
@@ -106,18 +111,54 @@ def test_log_rotation_configured():
         assert logging["options"]["max-file"] != ""
 
 
-def test_build_context_points_to_parent():
-    data = _load_compose()
-    assert data["services"]["api"]["build"]["context"] == ".."
-    assert data["services"]["mcp"]["build"]["context"] == ".."
-
-
 def test_config_yaml_mounted():
     vols = _load_compose()["services"]["chromadb"]["volumes"]
     assert any("./config.yaml:/config.yaml" in v for v in vols)
 
 
-def test_api_and_mcp_use_different_dockerfiles():
-    data = _load_compose()
+# ---------------------------------------------------------------------------
+# GHCR image tests (main compose file uses pre-built images)
+# ---------------------------------------------------------------------------
+
+
+def test_api_uses_ghcr_image():
+    svc = _load_compose()["services"]["api"]
+    assert "image" in svc
+    assert "ghcr.io" in svc["image"]
+    assert "reasoning-bank-sdk-api" in svc["image"]
+
+
+def test_mcp_uses_ghcr_image():
+    svc = _load_compose()["services"]["mcp"]
+    assert "image" in svc
+    assert "ghcr.io" in svc["image"]
+    assert "reasoning-bank-sdk-mcp" in svc["image"]
+
+
+# ---------------------------------------------------------------------------
+# Local compose override tests
+# ---------------------------------------------------------------------------
+
+
+def test_local_compose_is_valid_yaml():
+    data = _load_local_compose()
+    assert isinstance(data, dict)
+    assert "services" in data
+
+
+def test_local_compose_has_api_and_mcp():
+    data = _load_local_compose()
+    assert "api" in data["services"]
+    assert "mcp" in data["services"]
+
+
+def test_local_build_context_points_to_parent():
+    data = _load_local_compose()
+    assert data["services"]["api"]["build"]["context"] == ".."
+    assert data["services"]["mcp"]["build"]["context"] == ".."
+
+
+def test_local_api_and_mcp_use_different_dockerfiles():
+    data = _load_local_compose()
     assert "Dockerfile.api" in data["services"]["api"]["build"]["dockerfile"]
     assert "Dockerfile.mcp" in data["services"]["mcp"]["build"]["dockerfile"]

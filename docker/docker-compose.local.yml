@@ -1,0 +1,15 @@
+# Local development override — build images from source instead of pulling from GHCR.
+# Usage: docker compose -f docker-compose.yml -f docker-compose.local.yml up --build -d
+
+services:
+  api:
+    image: reasoning-bank-sdk-api:local
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.api
+
+  mcp:
+    image: reasoning-bank-sdk-mcp:local
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.mcp
