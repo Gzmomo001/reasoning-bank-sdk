@@ -17,6 +17,11 @@ RUN uv venv /app/.venv && \
 
 FROM python:3.12-slim
 
+# Install gosu for privilege dropping in entrypoint
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends gosu && \
+    rm -rf /var/lib/apt/lists/*
+
 WORKDIR /app
 
 RUN groupadd --gid 1000 app && \
@@ -29,13 +34,15 @@ COPY reasoning_bank_mcp/ reasoning_bank_mcp/
 
 RUN mkdir -p /app/logs && chown 1000:1000 /app/logs
 
+COPY docker/docker-entrypoint.sh /usr/local/bin/
+RUN chmod +x /usr/local/bin/docker-entrypoint.sh
+
 ENV PATH="/app/.venv/bin:$PATH"
 ENV VIRTUAL_ENV="/app/.venv"
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
 
-USER app
-
 EXPOSE 9000
 
-CMD ["python", "-m", "reasoning_bank_mcp.server", "--transport", "sse", "--port", "9000"]
+ENTRYPOINT ["docker-entrypoint.sh"]
+CMD ["/app/.venv/bin/python", "-m", "reasoning_bank_mcp.server", "--transport", "sse", "--port", "9000"]

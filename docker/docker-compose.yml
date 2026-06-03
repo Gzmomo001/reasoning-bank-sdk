@@ -8,6 +8,7 @@ services:
       - ./config.yaml:/config.yaml
     environment:
       - ANONYMIZED_TELEMETRY=FALSE
+    restart: unless-stopped
     healthcheck:
       test: ["CMD-SHELL", "bash -c 'echo > /dev/tcp/localhost/8000'"]
       interval: 5s
@@ -38,6 +39,7 @@ services:
       - CHROMA_PORT=8000
       - EMBEDDING_MODEL=${EMBEDDING_MODEL:-gemini-embedding-001}
       - EMBEDDING_PROVIDER=${EMBEDDING_PROVIDER:-gemini}
+      - EMBEDDING_API_KEY=${EMBEDDING_API_KEY:-}
       - LLM_PROVIDER=${LLM_PROVIDER:-openai}
       - LLM_MODEL=${LLM_MODEL:-gpt-4o}
       - LLM_API_KEY=${LLM_API_KEY:-}
@@ -45,6 +47,13 @@ services:
       - GOOGLE_GENAI_USE_VERTEXAI=${GOOGLE_GENAI_USE_VERTEXAI:-False}
       - LOG_DIR=/app/logs
       - LOG_LEVEL=${LOG_LEVEL:-INFO}
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "/app/.venv/bin/python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8000/health')\" || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
     logging:
       driver: json-file
       options:
@@ -60,6 +69,8 @@ services:
     ports:
       - "9000:9000"
     depends_on:
+      api:
+        condition: service_healthy
       chromadb:
         condition: service_healthy
     volumes:
@@ -70,6 +81,7 @@ services:
       - CHROMA_PORT=8000
       - EMBEDDING_MODEL=${EMBEDDING_MODEL:-gemini-embedding-001}
       - EMBEDDING_PROVIDER=${EMBEDDING_PROVIDER:-gemini}
+      - EMBEDDING_API_KEY=${EMBEDDING_API_KEY:-}
       - LLM_PROVIDER=${LLM_PROVIDER:-openai}
       - LLM_MODEL=${LLM_MODEL:-gpt-4o}
       - LLM_API_KEY=${LLM_API_KEY:-}
@@ -77,6 +89,13 @@ services:
       - GOOGLE_GENAI_USE_VERTEXAI=${GOOGLE_GENAI_USE_VERTEXAI:-False}
       - LOG_DIR=/app/logs
       - LOG_LEVEL=${LOG_LEVEL:-INFO}
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "bash -c 'echo > /dev/tcp/localhost/9000'"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
     logging:
       driver: json-file
       options:
@@ -88,6 +107,3 @@ services:
 networks:
   reasoning-bank:
     driver: bridge
-
-volumes:
-  chroma_data:

@@ -24,6 +24,12 @@ def create_app() -> FastAPI:
         description="Persistent agent memory with induction, retrieval, and scaling.",
     )
     app.include_router(router)
+
+    @app.get("/health", tags=["system"])
+    def health_check() -> dict[str, str]:
+        """Lightweight health check endpoint."""
+        return {"status": "ok"}
+
     return app
 
 
