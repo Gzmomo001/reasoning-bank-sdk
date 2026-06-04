@@ -64,6 +64,7 @@ ignore = [
     "DOC",     # docstring formatting rules
     "COM812",  # trailing comma (conflicts with ruff formatter)
     "ISC001",  # implicitly concatenated string literals (conflicts with ruff formatter)
+    "S104",    # binding to all interfaces
 ]
 
 [tool.ruff.lint.per-file-ignores]

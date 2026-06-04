@@ -21,7 +21,7 @@ from reasoning_bank.logging_config import setup_logging
 if TYPE_CHECKING:
     from reasoning_bank.llm.base import LLMClient
 
-mcp = FastMCP("ReasoningBank", host="127.0.0.1", port=9000)
+mcp = FastMCP("ReasoningBank", host="0.0.0.0", port=9000)
 
 
 # ---------------------------------------------------------------------------

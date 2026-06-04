@@ -1,3 +1,5 @@
+<div align="center">
+
 # ReasoningBank SDK
 
 [![Docker Build](https://github.com/Gzmomo001/reasoning-bank-sdk/actions/workflows/docker-publish.yml/badge.svg)](https://github.com/Gzmomo001/reasoning-bank-sdk/actions/workflows/docker-publish.yml)
@@ -6,6 +8,8 @@
 [![Report](https://img.shields.io/badge/Docs-Report-blue)](https://github.com/Gzmomo001/reasoning-bank-sdk/blob/main/docs/report.md)
 [![Python >=3.12](https://img.shields.io/badge/python->=3.12-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
+</div>
 
 Persistent agent memory with induction, retrieval, and scaling. ReasoningBank lets AI agents learn from their trajectories — extracting, storing, and retrieving generalizable memory items across tasks.
 
