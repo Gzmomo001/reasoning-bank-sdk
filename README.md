@@ -1,5 +1,12 @@
 # ReasoningBank SDK
 
+[![Docker Build](https://github.com/Gzmomo001/reasoning-bank-sdk/actions/workflows/docker-publish.yml/badge.svg)](https://github.com/Gzmomo001/reasoning-bank-sdk/actions/workflows/docker-publish.yml)
+[![GitHub Pages](https://github.com/Gzmomo001/reasoning-bank-sdk/actions/workflows/pages.yml/badge.svg)](https://gzmomo001.github.io/reasoning-bank-sdk/presentation.html)
+[![Presentation](https://img.shields.io/badge/Slides-Presentation-8A2BE2?logo=google-slides&logoColor=white)](https://gzmomo001.github.io/reasoning-bank-sdk/presentation.html)
+[![Report](https://img.shields.io/badge/Docs-Report-blue)](https://github.com/Gzmomo001/reasoning-bank-sdk/blob/main/docs/report.md)
+[![Python >=3.12](https://img.shields.io/badge/python->=3.12-blue.svg)](https://www.python.org/downloads/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
 Persistent agent memory with induction, retrieval, and scaling. ReasoningBank lets AI agents learn from their trajectories — extracting, storing, and retrieving generalizable memory items across tasks.
 
 ## Features
@@ -580,9 +587,7 @@ Induction prompts are domain-adapted for:
 - **`coding`** — Code repository tasks
 - **`general`** — General interactive environments
 
-## [Presentation_link](./docs/presentation.html)
-
-## [Report_link](./docs/report.md)
+## [Presentation](https://gzmomo001.github.io/reasoning-bank-sdk/presentation.html) | [Report](./docs/report.md)
 
 ## Testing
 
