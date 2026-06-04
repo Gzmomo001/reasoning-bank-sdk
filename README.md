@@ -3,7 +3,7 @@
 # ReasoningBank SDK
 
 [![Docker Build](https://github.com/Gzmomo001/reasoning-bank-sdk/actions/workflows/docker-publish.yml/badge.svg)](https://github.com/Gzmomo001/reasoning-bank-sdk/actions/workflows/docker-publish.yml)
-[![GitHub Pages](https://github.com/Gzmomo001/reasoning-bank-sdk/actions/workflows/pages.yml/badge.svg)](https://gzmomo001.github.io/reasoning-bank-sdk/presentation.html)
+[![GitHub Pages](https://github.com/Gzmomo001/reasoning-bank-sdk/actions/workflows/pages.yml/badge.svg)](https://gzmomo001.github.io/reasoning-bank-sdk/index.html)
 [![Presentation](https://img.shields.io/badge/Slides-Presentation-8A2BE2?logo=google-slides&logoColor=white)](https://gzmomo001.github.io/reasoning-bank-sdk/presentation.html)
 [![Report](https://img.shields.io/badge/Docs-Report-blue)](https://github.com/Gzmomo001/reasoning-bank-sdk/blob/main/docs/report.md)
 [![Python >=3.12](https://img.shields.io/badge/python->=3.12-blue.svg)](https://www.python.org/downloads/)
